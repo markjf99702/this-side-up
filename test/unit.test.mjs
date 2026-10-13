@@ -303,3 +303,19 @@ test('nudges read as fractions of an inch', () => {
   assert.equal(fmt(1.5, 'in'), '1 1/2 in');
   assert.equal(fmt(1.5, 'mm'), '1.5 mm');
 });
+
+test('the offline copy has every file the page uses, and nothing that isn’t there', async () => {
+  const { readFile, readdir, stat } = await import('node:fs/promises');
+  const { join, dirname } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const sw = await readFile(join(root, 'sw.js'), 'utf8');
+  const shell = JSON.parse(sw.match(/const SHELL = (\[[\s\S]*?\]);/)[1].replace(/'/g, '"').replace(/,\s*\]/, ']').replace(/\/\/.*$/gm, ''));
+  const walk = async dir => (await Promise.all((await readdir(join(root, dir))).map(async f => {
+    const p = dir ? `${dir}/${f}` : f;
+    return (await stat(join(root, p))).isDirectory() ? walk(p) : [p];
+  }))).flat();
+  const files = [...await walk('js'), ...await walk('css'), ...await walk('fonts')];
+  for (const f of files) assert.ok(shell.includes(f), `sw.js should cache ${f}`);
+  for (const f of shell.filter(f => f !== './')) await stat(join(root, f)); // throws if it's missing
+});

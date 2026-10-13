@@ -5,7 +5,7 @@
   "description": "Number every box in the move, print labels with a QR code, and tick them onto the truck and off again.",
   "scripts": {
     "start": "npx --yes http-server -c-1 -p 8080 .",
-    "test": "node --test test/unit.test.mjs test/qr.test.mjs && node test/e2e.mjs"
+    "test": "node --test --test-concurrency=1 test/unit.test.mjs test/qr.test.mjs && node test/e2e.mjs"
   },
   "devDependencies": {
     "upng-js": "^2.1.0",
