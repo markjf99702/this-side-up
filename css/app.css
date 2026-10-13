@@ -504,7 +504,7 @@ body.bare { padding-bottom: 0; }
   grid-template-rows: 6.2em auto auto minmax(0, 1fr) 15.9em;
   grid-template-areas: "room room" "num num" "flags flags" "items items" "qr foot";
 }
-.lab p { margin: 0; }
+.lab p { margin: 0; color: inherit; } /* the label keeps its own ink, inside a card or not */
 .lab-room {
   grid-area: room;
   display: flex; align-items: center; gap: .7em;
