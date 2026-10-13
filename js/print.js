@@ -114,7 +114,11 @@ function labels() {
       if (e.target.dataset.pick) {
         picked ||= new Set();
         if (e.target.checked) picked.add(e.target.dataset.pick); else picked.delete(e.target.dataset.pick);
+        // Redraw, but keep the list where it was scrolled to.
+        const at = $('.picklist')?.scrollTop || 0;
         labels();
+        const pl = $('.picklist');
+        if (pl) pl.scrollTop = at;
       }
     },
     click(e) {
