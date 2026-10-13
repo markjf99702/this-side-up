@@ -215,7 +215,7 @@ textarea.input { resize: vertical; line-height: 1.5; }
 .welcome { max-width: 620px; margin: 6px auto 0; display: grid; gap: 14px; }
 .sample { margin: 0; }
 .sample .boxside { padding: 18px 20px 22px; }
-.sample figcaption { margin: 8px 6px 0; text-align: center; color: var(--kraft-ink); font-size: .9rem; }
+.sample figcaption { margin: 8px 6px 0; text-align: center; color: var(--kraft-ink); font-size: .9rem; text-wrap: balance; }
 @media (min-width: 900px) {
   .welcome { max-width: 1000px; grid-template-columns: minmax(0, 1fr) 420px; align-items: center; column-gap: 28px; }
   .welcome > .how, .welcome > .hint { grid-column: 1 / -1; }
