@@ -501,7 +501,7 @@ await key('back');
 for (const n of [1, 2, 3, 4]) { await keyIn(n); await key('tick'); }
 assert.match(await page.locator('.truck-count').innerText(), /4 of 4 on the truck/);
 await keyIn(5);
-assert.match(await page.locator('#readout').innerText(), /Goes in the car, not the truck/i);
+assert.match(await page.locator('#readout').innerText(), /Car, not the truck/i);
 await key('tick');
 await page.locator('.truck-card.finished').waitFor();
 assert.match(await page.locator('.truck-count').innerText(), /Everything’s loaded/);
@@ -544,6 +544,89 @@ await page.goto(base + '#/');
 await page.click('[data-filter="packed"]');
 assert.equal(await page.locator('.boxrow').count(), 3, 'three still packed');
 await page.click('[data-filter="all"]');
+
+// ---------- The pad on a shorter phone ----------
+// Safari's own bars leave 390 x 664. The whole pad fits above the tabs, and no key moves between one box and the
+// next, whatever the box (four flags, a long room name, no room, four digits): a thumb tap meant for 9 put Box 1
+// on the truck instead of Box 19 when the keys jumped.
+step('the pad stays put');
+const shortPhone = await browser.newContext({ viewport: { width: 390, height: 664 }, deviceScaleFactor: 2, hasTouch: true });
+const sp = await shortPhone.newPage();
+sp.on('pageerror', e => problems.push(`short phone: ${e.message}`));
+await sp.goto(base);
+await sp.evaluate(async () => {
+  const M = await import('./js/model.js');
+  const list = M.newList();
+  const to = name => (M.rooms(list, 'to').find(r => r.name === name) || M.addRoom(list, 'to', name)).id;
+  const from = name => (M.rooms(list, 'from').find(r => r.name === name) || M.addRoom(list, 'from', name)).id;
+  const add = f => M.putBox(list, M.newBox(list, f));
+  add({ from: from('Kitchen'), to: to('Kitchen'), items: ['Kettle', 'Mugs'], fragile: true, first: true });
+  add({ from: from('Office'), to: to('Office'), items: ['A very long line describing the contents of this box in exhausting detail', 'Passports'], fragile: true, heavy: true, first: true, car: true });
+  add({ items: ['Mystery cables'] });
+  add({ from: from('Garage'), to: to('Kids’ playroom & craft corner'), items: ['Crayons'], heavy: true, first: true });
+  add({ n: 1234, from: from('Bedroom'), to: to('Bedroom'), items: ['Spare bulbs'], fragile: true });
+  add({ kind: 'piece', from: from('Living room'), to: to('Living room'), items: ['Sofa'] });
+  localStorage.setItem('this-side-up.v1', JSON.stringify(list));
+});
+await sp.reload();
+await sp.goto(base + '#/truck/load');
+await sp.locator('.keys').waitFor();
+await sp.evaluate(() => document.fonts.ready);
+const padAt = () => sp.evaluate(() => {
+  const on = document.querySelector('[data-key="tick"]').getBoundingClientRect();
+  const nine = document.querySelector('[data-key="9"]').getBoundingClientRect();
+  return { on: Math.round(on.top + scrollY), nine: Math.round(nine.top + scrollY), bottom: on.bottom, tabs: document.querySelector('.tabs').getBoundingClientRect().top };
+});
+const spKey = async k => sp.click(`[data-key="${k}"]`);
+const start = await padAt();
+assert.ok(start.bottom <= start.tabs, `0 and On sit above the tabs (On ends at ${start.bottom}, the tabs start at ${start.tabs})`);
+assert.equal(await sp.evaluate(() => getComputedStyle(document.querySelector('.rd-num.empty b')).width), '3px', 'a thin caret, not a black slab');
+const padSeen = [];
+for (const stage of ['load', 'unload']) {
+  if (stage === 'unload') { await sp.click('.truck-head a:has-text("Unloading")'); await sp.locator('.truck-screen[data-stage="unload"]').waitFor(); }
+  for (const n of ['2', '3', '4', '1234', '6', '1']) {
+    for (const d of n) await spKey(d);
+    padSeen.push([`${stage} ${n}`, await padAt()]);
+    await spKey('tick');
+    padSeen.push([`${stage} ${n} ticked`, await padAt()]);
+  }
+}
+for (const [what, at] of padSeen) assert.deepEqual([at.on, at.nine], [start.on, start.nine], `the keys stay where they were (${what})`);
+// The car box, while loading: amber, "Car, not the truck", a Car key, and "in the car" once it's ticked.
+await sp.click('.truck-head a:has-text("Loading")');
+await sp.locator('.truck-screen[data-stage="load"]').waitFor();
+await sp.click('[data-act="reset"]');
+await sp.click('#sheetGo');
+await spKey('2');
+assert.equal(await sp.locator('#readout.car').count(), 1, 'a car box turns the readout amber');
+assert.match(await sp.locator('#readout').innerText(), /Car, not the truck/i);
+assert.equal((await sp.locator('[data-key="tick"]').innerText()).trim(), 'Car');
+await spKey('tick');
+assert.match(await sp.locator('#last').innerText(), /Box 2 in the car/);
+assert.equal((await sp.locator('[data-key="tick"]').innerText()).trim(), 'On', 'and the key goes back to On');
+// No room: "No room picked", never "Take it to the No room".
+await sp.click('.truck-head a:has-text("Unloading")');
+await sp.locator('.truck-screen[data-stage="unload"]').waitFor();
+await sp.click('[data-act="reset"]');
+await sp.click('#sheetGo');
+await spKey('3');
+assert.match(await sp.locator('#readout').innerText(), /Going to\s+No room picked/i);
+await spKey('tick');
+assert.match(await sp.locator('#readout').innerText(), /Going to\s+No room picked/i);
+assert.doesNotMatch(await sp.locator('#readout').innerText(), /Take it to the/i);
+// Unloading finished: on a later visit the truck is parked there, empty, not a blank card.
+await sp.evaluate(async () => {
+  const M = await import('./js/model.js');
+  const { store } = await import('./js/store.js');
+  for (const b of M.live(store.list)) M.setStage(b, 'unload', true);
+  store.save();
+});
+await sp.goto(base + '#/');
+await sp.goto(base + '#/truck/unload');
+await sp.locator('.truck-card.finished').waitFor();
+assert.equal(await sp.evaluate(() => getComputedStyle(document.querySelector('.truck-body')).transform), 'none', 'the truck is in the picture');
+await fits(sp, 'the truck on a shorter phone');
+await shortPhone.close();
 
 // ---------- The first night ----------
 step('the first night');

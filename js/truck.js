@@ -15,6 +15,9 @@ const WORDS = {
   unload: { verb: 'Off', done: 'off the truck', missing: 'Still to come off', side: 'to', place: 'Going to' },
   unpack: { verb: 'Done', done: 'unpacked', missing: 'Still packed', side: 'to', place: 'Going to' },
 };
+// While loading, a box marked Goes in the car goes in the car.
+const inCar = (box, stage) => stage === 'load' && box.car;
+const doneWord = (box, stage) => (inCar(box, stage) ? 'in the car' : WORDS[stage].done);
 
 export function truck(stage) {
   if (!store.list) return go('/', true);
@@ -83,7 +86,7 @@ export function truck(stage) {
     if (found.length > 1 && !force) { pickOne(found); return; }
     const box = found[0];
     if (M.done(box, stage)) {
-      flash('warn', `${name(box)} is already ${WORDS[stage].done}`);
+      flash('warn', `${name(box)} is already ${doneWord(box, stage)}`);
       buzz([20, 40, 20]);
       typed = '';
       readout(true);
@@ -122,21 +125,34 @@ export function truck(stage) {
     });
   }
 
-  // What the number you've keyed in is: before you tick it, and just after.
+  // What the number you've keyed in is: before you tick it, and just after. Always the same height, so the keys
+  // below never move between one box and the next.
   function readout(justTicked = false, tickedBox = null) {
     const el = $('#readout');
     if (justTicked && tickedBox) {
       el.className = 'readout ok';
       el.innerHTML = boxCard(tickedBox, list, stage, true);
+      tickKey(null);
       return;
     }
-    if (justTicked) return;
+    if (justTicked) { tickKey(null); return; }
     const n = Number(typed);
     const found = typed ? M.findNumber(list, n) : [];
-    el.className = 'readout' + (typed && !found.length ? ' nobox' : '');
+    const box = found[0];
+    el.className = 'readout' + (typed && !found.length ? ' nobox' : box && inCar(box, stage) && !M.done(box, stage) ? ' car' : '');
     el.innerHTML = typed
-      ? (found.length ? boxCard(found[0], list, stage, false, typed) : `<div class="rd-num"><b>${typed}</b><span>No box ${n} yet${typed.length < 4 ? ': keep typing' : ''}</span></div>`)
-      : `<div class="rd-num empty"><b>${'&nbsp;'}</b><span>Key in the number on the box</span></div>`;
+      ? (box ? boxCard(box, list, stage, false) : `<div class="rd-num"><b>${typed}</b><span>No box ${n} yet${typed.length < 4 ? ': keep typing' : ''}</span></div>`)
+      : `<div class="rd-num empty"><b></b><span>Key in the number on the box</span></div>`;
+    tickKey(box && !M.done(box, stage) ? box : null);
+  }
+
+  // The tick key says where the box is going: Car, for a box that goes in the car rather than on the truck.
+  function tickKey(box) {
+    const k = $('[data-key="tick"]');
+    const car = !!box && inCar(box, stage);
+    k.classList.toggle('car', car);
+    k.querySelector('span').textContent = car ? 'Car' : WORDS[stage].verb;
+    k.setAttribute('aria-label', car ? 'Tick it in the car' : `Tick it ${WORDS[stage].done}`);
   }
 
   function flash(kind, msg) {
@@ -146,12 +162,13 @@ export function truck(stage) {
     el.classList.remove('shake');
     void el.offsetWidth;
     el.classList.add('shake');
+    tickKey(null);
   }
 
   function showLast() {
     const el = $('#last');
     const box = last && last.stage === stage ? M.byUid(list, last.uid) : null;
-    el.innerHTML = box ? `<span>${icon('check', 'icon xs')} ${esc(name(box))} ${WORDS[stage].done}</span><button class="linkish" data-act="undo">Undo</button>` : '';
+    el.innerHTML = box ? `<span>${icon('check', 'icon xs')} ${esc(name(box))} ${doneWord(box, stage)}</span><button class="linkish" data-act="undo">Undo</button>` : '';
   }
 
   // The truck, how many are ticked, and room by room.
@@ -181,8 +198,9 @@ export function truck(stage) {
       celebrated[stage] = true;
       card.classList.add('celebrate');
       buzz([40, 60, 40, 60, 120]);
-      // The truck is up top; whoever ticked the last box is looking at the keys.
-      card.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+      // The truck is up top; whoever ticked the last box is looking at the keys. Bring it into view if it isn't.
+      const top = card.getBoundingClientRect().top, bar = document.querySelector('.top')?.getBoundingClientRect().bottom || 0;
+      if (top < bar) card.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
     }
     const left = all.length - doneN;
     $('#missingBtn').innerHTML = left ? `${WORDS[stage].missing} <b>${left}</b>` : 'Nothing missing';
@@ -229,23 +247,39 @@ export function truck(stage) {
 
 const name = box => (box.kind === 'piece' ? box.items[0] || `No. ${box.n}` : `Box ${box.n}`);
 
-function boxCard(box, list, stage, ticked, typed = '') {
+// One box on the readout, in three lines that never wrap: where it's going (or coming from), what's in it, and
+// its flags as icons down the side (a tick once it's ticked).
+function boxCard(box, list, stage, ticked) {
   const to = M.room(list, box.to), from = M.room(list, box.from);
-  const st = to ? styleOf(to) : null;
-  const where = stage === 'unload' ? to : from;
+  const live = r => (r && !r.gone ? r : null);
+  const st = live(to) ? styleOf(to) : null;
   const piece = box.kind === 'piece';
   const flags = M.FLAGS.filter(f => box[f]);
+  // A piece of furniture is named up top while loading; at the other end the room is, so its name goes here.
+  const things = (piece ? (stage === 'load' ? box.items.slice(1) : [box.items[0] || 'Furniture', ...box.items.slice(1)]) : box.items).slice(0, 6).join(' · ');
+  let head;
+  if (stage === 'load') {
+    // Loading: the room it's leaving (where to look for it), or the furniture's name.
+    const where = live(from);
+    const kicker = inCar(box, stage) ? 'Car, not the truck' : piece ? (where ? `From the ${esc(where.name)}` : 'Furniture') : where ? 'From the' : live(to) ? 'Going to the' : 'Leaving';
+    const what = piece ? esc(box.items[0] || 'Furniture') : where ? esc(where.name) : live(to) ? esc(to.name) : 'No room picked';
+    head = `<span class="rd-to plain${!piece && !where && !live(to) ? ' none' : ''}"><span><small>${kicker}</small><b>${what}</b></span></span>`;
+  } else if (st) {
+    head = `<span class="rd-to"><span class="rd-shape">${shapeSVG(st.shape)}</span><span><small>${stage === 'unpack' ? 'In the' : ticked ? 'Take it to the' : 'Goes to the'}</small><b>${esc(to.name)}</b></span></span>`;
+  } else {
+    head = `<span class="rd-to plain none"><span><small>Going to</small><b>No room picked</b></span></span>`;
+  }
+  const side = ticked ? `<span class="rd-tick">${icon('check')}</span>`
+    : M.done(box, stage) ? `<span class="rd-already">Already ${stage === 'load' ? (box.car ? 'in the car' : 'on') : stage === 'unload' ? 'off' : 'unpacked'}</span>`
+    : flags.length ? `<span class="rd-flags">${flags.map(f => `<span class="rd-flag f-${f}" title="${M.flagWords[f]}">${flagIcon(f)}<span class="sr">${M.flagWords[f]}</span></span>`).join('')}</span>` : '';
   return `
-    <div class="rd-box${ticked ? ' ticked' : ''}" style="${st ? `--rc:${st.hex};--ri:${st.ink}` : ''}">
+    <div class="rd-box${ticked ? ' ticked' : ''}${piece ? ' piece' : ''}" data-digits="${String(box.n).length}" style="${st ? `--rc:${st.hex};--ri:${st.ink}` : ''}">
       <span class="rd-n">${box.n}</span>
       <span class="rd-what">
-        ${stage !== 'load'
-          ? `<span class="rd-to">${st ? `<span class="rd-shape">${shapeSVG(st.shape)}</span>` : ''}<span><small>${stage === 'unpack' ? 'In the' : ticked ? 'Take it to the' : 'Goes to the'}</small><b>${esc(to?.name || 'No room')}</b></span></span>`
-          : `<span class="rd-to plain"><span><small>${box.car ? 'Goes in the car, not the truck' : piece ? (where ? `From the ${esc(where.name)}` : 'Furniture') : where ? 'From the' : ''}</small><b>${esc(piece ? box.items[0] || 'Furniture' : where?.name || 'Box ' + box.n)}</b></span></span>`}
-        <span class="rd-things">${esc((box.kind === 'piece' ? box.items.slice(1) : box.items).slice(0, 4).join(' · '))}</span>
-        ${flags.length ? `<span class="rd-flags">${flags.map(f => `<span class="rd-flag f-${f}">${flagIcon(f)}${M.flagWords[f]}</span>`).join('')}</span>` : ''}
+        ${head}
+        <span class="rd-things">${esc(things) || (piece ? '' : '<span class="hint">Nothing listed</span>')}</span>
       </span>
-      ${ticked ? `<span class="rd-tick">${icon('check')}</span>` : M.done(box, stage) ? `<span class="rd-already">Already ${stage === 'load' ? 'on' : stage === 'unload' ? 'off' : 'unpacked'}</span>` : ''}
+      ${side}
     </div>`;
 }
 
