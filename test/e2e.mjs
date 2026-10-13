@@ -665,7 +665,7 @@ await page.click('.sheet [data-close]');
 const sam = await device('sam');
 await sam.page.goto(listLink);
 await sam.page.locator('[data-act="take"]').waitFor();
-assert.match(await text(sam.page), /Boston to Oakland.*5 boxes/s);
+assert.match(await text(sam.page), /“Boston to Oakland”: 4 boxes and 1 piece of furniture/, 'the sofa isn’t a box');
 await sam.page.click('[data-act="take"]');
 await sam.page.waitForURL(/#\/$/);
 assert.equal(await rows(sam.page, 5), 5);
@@ -714,7 +714,7 @@ assert.match(csvText, /"1","Box","Kitchen","Kitchen","yes","","yes","","Kettle; 
 const third = await device('third');
 await third.page.goto(base + '#/more');
 await third.page.setInputFiles('#fileIn', { name: 'move.this-side-up.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(saved)) });
-await toastSays(third.page, /Loaded 7 boxes and 1 photo/);
+await toastSays(third.page, /Loaded 6 boxes and 1 piece of furniture, and 1 photo/);
 await third.page.goto(base + `#/box/${box1}`);
 await third.page.locator('.ph img').waitFor({ timeout: 8000 });
 

@@ -5,6 +5,7 @@ import { app, esc, on, go, toast, icon, sheet, plural, share, copy, download, fr
 import * as M from './model.js';
 import { listLink, readList, base } from './payload.js';
 import { badge } from './app.js';
+import { boxesAndPieces } from './common.js';
 
 // ---------- A list arriving in a link ----------
 
@@ -23,13 +24,14 @@ export async function listArrives(data) {
 // What to do with a list from somewhere else: take it as it is, or fold it into this one.
 function offer(incoming, from) {
   const mine = store.list && !store.list.example && M.live(store.list).length ? store.list : null;
-  const n = M.live(incoming).length;
-  const named = incoming.name ? `“${esc(incoming.name)}”` : 'a move';
+  const count = boxesAndPieces(M.live(incoming));
+  // "“Boston to Oakland”: 9 boxes and 1 piece of furniture", or just the count for a list with no name.
+  const heading = incoming.name ? `“${esc(incoming.name)}”: ${count}` : count.charAt(0).toUpperCase() + count.slice(1);
   if (!mine) {
     app.innerHTML = `
       <div class="narrow"><section class="card arrive">
         <p class="kicker">A list from another phone</p>
-        <h2>${named}: ${plural(n, 'box', 'boxes')}</h2>
+        <h2>${heading}</h2>
         <p>Keep it on this phone too. It stays here and works with no Wi-Fi. When either phone changes something, send it across again and the two are merged box by box.</p>
         <div class="row"><button class="btn primary" data-act="take">${icon('check')} Keep this list here</button><a class="btn" href="#/">Not now</a></div>
       </section></div>`;
@@ -40,7 +42,7 @@ function offer(incoming, from) {
         store.list = clean;
         store.save();
         go('/', true);
-        toast(`${plural(n, 'box', 'boxes')} on this phone now`);
+        toast(`${count} on this phone now`);
       },
     });
     return;
@@ -51,7 +53,7 @@ function offer(incoming, from) {
   app.innerHTML = `
     <div class="narrow"><section class="card arrive">
       <p class="kicker">A list from another phone</p>
-      <h2>${named}: ${plural(n, 'box', 'boxes')}</h2>
+      <h2>${heading}</h2>
       ${same ? '' : `<p class="warn-text"><b>This looks like a different move from yours.</b> Merging puts its boxes in with yours.</p>`}
       ${nothing ? '<p>Nothing new: this phone has all of it already.</p>' : `
         <ul class="merge-sum">
@@ -88,10 +90,9 @@ const mergedLine = s => {
 export async function sendSheet() {
   const list = store.list;
   const link = await listLink(list, base());
-  const n = M.live(list).length;
   sheet(`
     <h2>Send the list</h2>
-    <p>The whole list goes in the link, ${plural(n, 'box', 'boxes')} of it. Open it on the other phone and it’s saved there too. Photos stay on this phone: a backup file carries those.</p>
+    <p>The whole list goes in the link: ${boxesAndPieces(M.live(list))}. Open it on the other phone and it’s saved there too. Photos stay on this phone: a backup file carries those.</p>
     ${link.length > 8000 ? `<p class="warn-text">It’s a long link (${Math.round(link.length / 1000)},000 characters). If it arrives cut short, send a backup file instead.</p>` : ''}
     <textarea class="input" id="sheetLink" rows="3" readonly>${esc(link)}</textarea>
     <div class="row">
@@ -119,7 +120,7 @@ export async function backup({ withPhotos = true } = {}) {
     }
   }
   download(fileName(list, 'this-side-up.json'), JSON.stringify(out));
-  toast(`Saved ${plural(M.live(list).length, 'box', 'boxes')}${Object.keys(out.photos).length ? ` and ${plural(Object.keys(out.photos).length, 'photo')}` : ''}`);
+  toast(`Saved ${boxesAndPieces(M.live(list))}${Object.keys(out.photos).length ? `, and ${plural(Object.keys(out.photos).length, 'photo')}` : ''}`);
 }
 
 // A backup file (or a bare list) from this app: merged in, photos and all.
@@ -142,7 +143,7 @@ export async function loadFile(file) {
     store.save();
     badge();
     go('/', true);
-    toast(`Loaded ${plural(M.live(incoming).length, 'box', 'boxes')}${added ? ` and ${plural(added, 'photo')}` : ''}`);
+    toast(`Loaded ${boxesAndPieces(M.live(incoming))}${added ? `, and ${plural(added, 'photo')}` : ''}`);
     return;
   }
   const { list, summary } = M.merge(mine, incoming);

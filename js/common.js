@@ -2,7 +2,7 @@
 import * as M from './model.js';
 import { styleOf, SHAPES } from './rooms.js';
 export { labelSig, needsLabel } from './payload.js';
-import { esc, flagIcon, icon } from './ui.js';
+import { esc, flagIcon, icon, plural } from './ui.js';
 
 
 // A room's sticker: its shape, filled with its colour.
@@ -19,6 +19,12 @@ export function tile(box, list, cls = '') {
 }
 
 export const flagList = box => M.FLAGS.filter(f => box[f]);
+
+// "9 boxes and 1 piece of furniture" (the sofa isn't a box), "12 boxes", "1 piece of furniture".
+export function boxesAndPieces(boxes) {
+  const pieces = boxes.filter(b => b.kind === 'piece').length, n = boxes.length - pieces;
+  return [n || !pieces ? plural(n, 'box', 'boxes') : '', pieces ? `${plural(pieces, 'piece')} of furniture` : ''].filter(Boolean).join(' and ');
+}
 
 // The words in a line that matched a search, marked.
 function marked(text, query) {
