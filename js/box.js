@@ -1,6 +1,6 @@
 // One box: its label, everything in it, its photos and what's happened to it. And the view a phone shows
 // when its camera reads a label and it doesn't have the list: what's inside and where it goes.
-import { store, photos, shrink } from './store.js';
+import { store, photos, shrink, photoId } from './store.js';
 import { app, esc, on, go, toast, icon, flagIcon, sheet, plural, when, $, upMark } from './ui.js';
 import * as M from './model.js';
 import { shapeSVG } from './rooms.js';
@@ -37,7 +37,7 @@ async function fillPhotos() {
 export async function addPhoto(box, file) {
   try {
     const blob = await shrink(file);
-    const id = M.uid('p');
+    const id = photoId();
     await photos.put(id, blob);
     box.photos = [...box.photos, id].slice(0, 12);
     return id;

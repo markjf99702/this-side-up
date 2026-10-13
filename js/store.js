@@ -79,11 +79,29 @@ async function tx(mode, fn) {
   });
 }
 
+// Photo ids start with when they were taken, so a sweep can tell an old orphan from a photo in a box
+// that's still being packed (in this tab or another).
+export const photoId = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const takenAt = id => parseInt(String(id).slice(1, -4), 36) || 0;
+
 export const photos = {
   put: (id, blob) => tx('readwrite', s => { s.put(blob, id); }),
   get: id => tx('readonly', s => s.get(id)).then(b => (b instanceof Blob ? b : null)).catch(() => null),
   remove: id => tx('readwrite', s => { s.delete(id); }).catch(() => {}),
   keys: () => tx('readonly', s => s.getAllKeys()).catch(() => []),
+  // Photos no box mentions any more (taken for a box that was never saved), a day or more old.
+  async sweep(list) {
+    if (!list) return 0;
+    const used = new Set(list.boxes.flatMap(b => b.photos));
+    let n = 0;
+    for (const id of await photos.keys()) {
+      const at = takenAt(id);
+      if (used.has(id) || !at || Date.now() - at < 86400000) continue;
+      await photos.remove(id);
+      n++;
+    }
+    return n;
+  },
 };
 
 // Shrinks a photo from the camera to at most 1280 px on its long side, as a JPEG.

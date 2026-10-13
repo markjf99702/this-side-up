@@ -171,8 +171,21 @@ const pic = await page.evaluate(async () => {
 await page.setInputFiles('#photoIn', { name: 'inside.png', mimeType: 'image/png', buffer: Buffer.from(pic, 'base64') });
 await toastSays(page, /Photo added/);
 await page.locator('.ph img').waitFor();
+// Photos for boxes that were never saved are swept away once they're a day old; nothing else is.
+await page.evaluate(async () => {
+  const { photos } = await import('./js/store.js');
+  const old = 'p' + (Date.now() - 3 * 86400000).toString(36) + 'aaaa';
+  const fresh = 'p' + Date.now().toString(36) + 'bbbb';
+  await photos.put(old, new Blob(['x'], { type: 'image/jpeg' }));
+  await photos.put(fresh, new Blob(['x'], { type: 'image/jpeg' }));
+});
 await page.reload();
 await page.locator('.ph img').waitFor({ timeout: 8000 });
+await page.waitForFunction(async () => {
+  const { photos } = await import('./js/store.js');
+  const keys = await photos.keys();
+  return keys.length === 2 && keys.some(k => k.endsWith('bbbb')) && !keys.some(k => k.endsWith('aaaa'));
+}, null, { timeout: 15000, polling: 500 });
 
 // ---------- A mover's phone reads the label ----------
 step('a mover reads a label');

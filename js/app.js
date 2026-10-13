@@ -1,6 +1,6 @@
 // Which screen goes with which address, and opening links that arrive: a label's QR code (#b/…),
 // a Tag Along sticker (#box/12) or a whole list from another phone (#l/…).
-import { store } from './store.js';
+import { store, photos } from './store.js';
 import { app, $, $$, go } from './ui.js';
 import * as M from './model.js';
 import { readBoxFragment, readNumber } from './payload.js';
@@ -87,6 +87,8 @@ window.addEventListener('storage', e => {
   // Don't redraw under someone's fingers while they're typing.
   const typing = document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
   if (!typing) render();
+// Tidy away photos from boxes that were never saved, once things have settled.
+setTimeout(() => photos.sweep(store.list).catch(() => {}), 4000);
 });
 window.addEventListener('beforeprint', preparePrint);
 

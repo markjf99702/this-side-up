@@ -288,7 +288,11 @@ function fitPreview() {
 
 // Fills the print-only copy of the pages and sets the paper size. Runs before every print, including the
 // browser's own Print menu; on any other screen it leaves the page to print as it looks.
+let preparedAt = 0;
 export function preparePrint() {
+  // Print buttons get the pages ready and then call print(), which fires beforeprint again: once is enough.
+  if (Date.now() - preparedAt < 2000) return;
+  preparedAt = Date.now();
   const root = document.getElementById('print-root');
   const style = document.getElementById('page-size');
   const onPrint = /^#\/print/.test(location.hash) && !!store.list;
@@ -311,4 +315,8 @@ export function preparePrint() {
   style.textContent = `@page { size: ${s.unit === 'mm' ? `${s.page[0]}mm ${s.page[1]}mm` : `${s.page[0]}in ${s.page[1]}in`}; margin: 0; }`;
 }
 
-window.addEventListener('afterprint', () => document.body.classList.remove('printing'));
+window.addEventListener('afterprint', () => {
+  preparedAt = 0;
+  document.body.classList.remove('printing');
+  document.getElementById('print-root').innerHTML = '';
+});
