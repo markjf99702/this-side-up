@@ -72,14 +72,28 @@ export function capsWidth(text, { weight = 860, stretch = '66%' } = {}) {
   return w;
 }
 
+// The room's name as big as the band takes: up to 4.1em on one line, or two lines for a long name.
+function fitBand(name, space) {
+  const one = space / capsWidth(name);
+  if (one >= 3 || !name.includes(' ')) return { size: Math.max(2.2, Math.min(4.1, one)), lines: [name] };
+  const words = name.split(/\s+/);
+  let best = null;
+  for (let k = 1; k < words.length; k++) {
+    const lines = [words.slice(0, k).join(' '), words.slice(k).join(' ')];
+    const widest = Math.max(...lines.map(l => capsWidth(l)));
+    if (!best || widest < best.widest) best = { lines, widest };
+  }
+  const two = Math.min(2.9, space / best.widest);
+  return two > one ? { size: two, lines: best.lines } : { size: Math.max(2.2, one), lines: [name] };
+}
+
 // One label. `w` and `h` are its size in inches.
 export function label(d, { w = 4, h = 10 / 3, qr = true, edge = false } = {}) {
   const tall = h > w * 1.05;
   const xwide = w >= h * 1.4; // a half sheet: the list of what's in it gets a column of its own
   const digits = String(d.n).length;
-  // The room's name as big as the band takes: 4.1em, smaller for a long name.
-  const room = d.to ? Math.max(2.2, Math.min(4.1, ((tall ? 21.3 : 33.3 * w / h - 11.4 - (edge ? 2 : 0)) - 0.3) / capsWidth(d.to.name))) : 0;
-  const roomStyle = d.to ? `--rc:${d.to.hex};--ri:${d.to.ink};--rn:${room.toFixed(2)}em;` : '';
+  const band = d.to ? fitBand(d.to.name, (tall ? 21.3 : 33.3 * w / h - 11.4 - (edge ? 2 : 0)) - 0.3) : null;
+  const roomStyle = d.to ? `--rc:${d.to.hex};--ri:${d.to.ink};--rn:${band.size.toFixed(2)}em;` : '';
   const piece = d.kind === 'piece';
   const name = piece ? d.items[0] || 'Furniture' : '';
   const rest = piece ? d.items.slice(1) : d.items;
@@ -91,9 +105,10 @@ export function label(d, { w = 4, h = 10 / 3, qr = true, edge = false } = {}) {
   ].filter(Boolean);
   // Where it's coming from, when that isn't a room of the same name.
   const from = d.from && (!d.to || d.from.trim().toLowerCase() !== d.to.name.trim().toLowerCase()) ? `<span class="lab-from">from ${esc(d.from)}</span>` : '';
-  // Roughly how many characters of contents fit: two lines across the label, three without flags.
-  const perLine = Math.round(w * 15);
-  const lines = (tall ? 3 : 2) + (flags.length || from ? 0 : 1);
+  // Roughly how many characters of contents fit (a little under, so "+ 3 more" always shows): two lines across
+  // the label, three without flags, one when the flags take two rows.
+  const perLine = Math.round(w * 10.5);
+  const lines = flags.length >= 3 && !tall ? 1 : (tall ? 3 : 2) + (flags.length || from ? 0 : 1);
   // A half sheet lists them a line each: seven lines, the last saying how many more if they don't all fit.
   const fitLines = 7;
   const { shown, left } = xwide
@@ -103,7 +118,7 @@ export function label(d, { w = 4, h = 10 / 3, qr = true, edge = false } = {}) {
     <article class="lab ${tall ? 'tall' : xwide ? 'wide xwide' : 'wide'}${d.to ? '' : ' no-room'}${piece ? ' piece' : ''}${edge ? ' edge' : ''}" style="--lw:${w};--lh:${h};${roomStyle}" data-digits="${digits}" data-flags="${flags.length}">
       <header class="lab-room">
         ${d.to ? `<span class="lab-shape">${shapeSVG(d.to.shape)}</span>` : ''}
-        <span class="lab-room-name">${d.to ? esc(d.to.name) : 'Room not picked'}</span>
+        <span class="lab-room-name${band?.lines.length > 1 ? ' two' : ''}">${d.to ? band.lines.map(esc).join('<br>') : 'Room not picked'}</span>
         ${upMark('lab-up')}
       </header>
       <div class="lab-numwrap">
