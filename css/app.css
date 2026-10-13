@@ -463,7 +463,7 @@ textarea.input { resize: vertical; line-height: 1.5; }
 .scan-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .scan-num { margin: 0; font: 900 5.5rem/.8 var(--stencil); }
 .scan-num small { display: block; font: 800 .95rem/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 8px; color: var(--muted); }
-h1.scan-num { font-size: 3.4rem; margin: 6px 0 12px; }
+h1.scan-num { font-size: 3.4rem; margin: 6px 0 12px; letter-spacing: .02em; text-transform: uppercase; }
 .scan-flags { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; font-size: 7.6px; }
 .scan-piece { font: 860 1.9rem/1 var(--sans); font-stretch: 70%; text-transform: uppercase; margin: 12px 0 4px; }
 .scan-body h2 { font-size: .85rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
