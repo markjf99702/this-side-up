@@ -2,7 +2,6 @@
 // They use the example move, with Math.random seeded so its ids (and so its QR codes) come out the same every time.
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
-import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,20 +13,23 @@ let UPNG = null;
 try { UPNG = require('upng-js'); } catch { /* without it the PNGs are saved as Chromium makes them */ }
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json', '.json': 'application/json' };
-const server = createServer(async (req, res) => {
-  const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-  let body;
-  try { body = await readFile(join(root, path === '/' ? 'index.html' : path)); } catch { res.writeHead(404); res.end(); return; }
-  res.writeHead(200, { 'content-type': TYPES[extname(path)] || 'text/html' });
-  res.end(body);
-}).listen(0);
-const base = `http://localhost:${server.address().port}/`;
+// The page opens at its real address, answered from this folder, so the labels' codes point where a phone can open
+// them (not at a local server), and come out the same every time.
+const base = 'https://junkdrawer.works/this-side-up/';
+async function serve(ctx) {
+  await ctx.route(base + '**', async route => {
+    const path = decodeURIComponent(new URL(route.request().url()).pathname).slice(new URL(base).pathname.length) || 'index.html';
+    try { await route.fulfill({ body: await readFile(join(root, path)), contentType: TYPES[extname(path)] || 'text/html' }); }
+    catch { await route.fulfill({ status: 404, body: '' }); }
+  });
+}
 const SEED = 7;
 const browser = await pw.chromium.launch();
 await mkdir(join(root, 'docs'), { recursive: true });
 
 async function open(viewport, deviceScaleFactor, { example = true } = {}) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor, hasTouch: true, isMobile: deviceScaleFactor > 1, serviceWorkers: 'block' });
+  await serve(ctx);
   const page = await ctx.newPage();
   await page.addInitScript(seed => {
     let a = seed; // mulberry32
@@ -124,5 +126,4 @@ async function save(page, file, opts = {}) {
 }
 
 await browser.close();
-server.close();
 console.log('screenshots written');

@@ -105,7 +105,9 @@ const tab = (() => {
   let id = '';
   try { id = sessionStorage.getItem(TAB_KEY) || ''; } catch { /* no session storage: an id for this page */ }
   if (!id) {
-    id = Math.random().toString(36).slice(2, 10);
+    // From crypto rather than Math.random, which the screenshots seed for the example's ids.
+    const r = globalThis.crypto?.getRandomValues?.(new Uint32Array(2)) || [Math.random() * 2 ** 32, Math.random() * 2 ** 32];
+    id = Array.from(r, v => (v >>> 0).toString(36)).join('').slice(0, 10);
     try { sessionStorage.setItem(TAB_KEY, id); } catch { /* it lasts as long as the page, then */ }
   }
   return id;
