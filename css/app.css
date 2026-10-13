@@ -256,6 +256,7 @@ textarea.input { resize: vertical; line-height: 1.5; }
   border: 0; background: var(--paper); box-shadow: var(--shadow);
   font-size: 1.08rem; font-weight: 500;
 }
+.find input::-webkit-search-cancel-button, .find input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
 .find input::placeholder { color: #9b8a76; font-family: var(--marker); font-size: 1.06rem; letter-spacing: .01em; }
 .find input:focus { outline: none; box-shadow: var(--shadow), 0 0 0 3px rgba(34, 26, 18, .2); }
 .find .clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 42px; height: 42px; border: 0; background: none; border-radius: 50%; color: var(--muted); display: grid; place-items: center; }
@@ -278,10 +279,10 @@ textarea.input { resize: vertical; line-height: 1.5; }
 }
 .boxrow:hover { box-shadow: var(--shadow), 0 0 0 2px rgba(34, 26, 18, .14); }
 .boxrow .what { min-width: 0; }
-.boxrow .where { display: flex; align-items: center; gap: 7px; font-weight: 750; font-size: 1rem; }
-.boxrow .where small { font-weight: 500; color: var(--muted); font-size: .84rem; }
+.boxrow .where { display: block; font-weight: 750; font-size: 1rem; line-height: 1.25; }
+.boxrow .where small { font-weight: 500; color: var(--muted); font-size: .84rem; margin-left: 6px; white-space: nowrap; }
+.boxrow .where .to { font-weight: 600; color: var(--ink-2); font-size: .9rem; margin-left: 6px; white-space: nowrap; }
 .boxrow .things { margin: 3px 0 0; color: var(--ink-2); font-size: .92rem; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.boxrow .things mark { background: #ffe58a; color: inherit; border-radius: 3px; padding: 0 2px; }
 .boxrow .flags { display: flex; flex-direction: column; gap: 4px; align-items: center; }
 .boxrow.done { opacity: .62; }
 .status { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 5px; font: 700 .72rem/1.3 var(--sans); letter-spacing: .03em; text-transform: uppercase; }
@@ -310,9 +311,6 @@ textarea.input { resize: vertical; line-height: 1.5; }
 .empty-note { text-align: center; padding: 26px 16px; color: var(--kraft-ink); }
 .empty-note p { margin: 0 0 12px; }
 
-/* Furniture in the list: its name first. */
-.piece-name { margin-right: 2px; }
-.piece-name + * , .boxrow .where .piece-name ~ small { font-weight: 500; }
 .group-head { display: flex; align-items: center; gap: 8px; margin: 14px 2px 8px; font: 800 1.15rem/1 var(--stencil); letter-spacing: .05em; text-transform: uppercase; color: var(--kraft-ink); }
 .group-head small, .list-head h2 small { font: 700 .85rem/1 var(--sans); letter-spacing: 0; opacity: .75; }
 .icon.xs { width: 14px; height: 14px; }
@@ -333,6 +331,8 @@ textarea.input { resize: vertical; line-height: 1.5; }
 .answer .tile.big .dot { width: 24px; height: 24px; }
 .answer-q { display: block; color: var(--muted); font-size: .92rem; }
 .answer-a { display: block; font: 800 1.45rem/1.1 var(--sans); font-stretch: 85%; margin: 2px 0 4px; }
+.answer-things { display: block; color: var(--ink-2); font-size: .9rem; line-height: 1.35; }
+.answer-things mark, .boxrow mark { background: #ffe58a; color: inherit; border-radius: 2px; padding: 0; box-shadow: 0 0 0 2px #ffe58a; }
 .answer.none { display: block; border: 0; text-align: center; color: var(--ink-2); }
 .answer.none p { margin: 0 0 4px; }
 
@@ -495,10 +495,10 @@ body.bare { padding-bottom: 0; }
 }
 .lab.no-room .lab-room-name { font-size: 2.2em; font-weight: 700; font-stretch: 85%; text-transform: none; }
 .lab-up { width: 3.5em; height: 3.5em; flex: none; }
-.lab-numwrap { grid-area: num; align-self: start; min-width: 0; margin-top: .9em; }
+.lab-numwrap { grid-area: num; align-self: start; min-width: 0; margin-top: 1em; }
 .lab-numrow { display: flex; align-items: flex-start; gap: .35em; }
 .lab-kind { font-weight: 800; font-stretch: 70%; font-size: 1.9em; letter-spacing: .06em; text-transform: uppercase; writing-mode: vertical-rl; transform: rotate(180deg); line-height: 1; padding-bottom: .1em; }
-.lab-num { font-family: var(--stencil); font-weight: 900; font-size: 15em; letter-spacing: -.01em; line-height: .76; }
+.lab-num { display: block; font-family: var(--stencil); font-weight: 900; font-size: 15em; letter-spacing: -.01em; line-height: .82; }
 .lab[data-digits="3"] .lab-num { font-size: 13.2em; }
 .lab[data-digits="4"] .lab-num { font-size: 10em; }
 .lab.piece .lab-num { font-size: 7.5em; }
@@ -530,10 +530,26 @@ body.bare { padding-bottom: 0; }
 .lab-items i { font-style: normal; color: #9a9184; }
 .lab-items em { font-style: normal; font-weight: 750; color: #555; white-space: nowrap; }
 
+/* Labels that reach the paper's edge (half sheets) keep everything a quarter inch in, where printers reach. */
+.lab.edge { padding: calc(var(--u) * .25); }
+/* Half sheets: number, a list of what's in it, and the code, side by side. */
+.lab.xwide {
+  grid-template-columns: auto minmax(0, 1fr) 15em; column-gap: 1.6em;
+  grid-template-rows: 6.2em minmax(0, 1fr) auto;
+  grid-template-areas: "room room room" "num items qr" "flags flags flags";
+}
+.lab.xwide .lab-num { font-size: 18.5em; }
+.lab.xwide[data-digits="3"] .lab-num { font-size: 16em; }
+.lab.xwide[data-digits="4"] .lab-num { font-size: 13em; }
+.lab.xwide.piece .lab-num { font-size: 10em; }
+.lab.xwide .lab-flags { margin-bottom: .2em; }
+.lab.xwide .lab-items { display: block; list-style: none; margin: 1.1em 0 0 !important; padding: 0 0 0 1.4em; border-left: .14em solid #d9d2c5; font-size: 1.75em; line-height: 1.32; overflow: hidden; }
+.lab.xwide .lab-items li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lab.xwide .lab-flags { margin-top: .8em; }
 /* Tall labels */
-.lab.tall .lab-num { font-size: 19em; }
-.lab.tall[data-digits="3"] .lab-num { font-size: 15em; }
-.lab.tall[data-digits="4"] .lab-num { font-size: 11.5em; }
+.lab.tall .lab-num { font-size: 17.5em; }
+.lab.tall[data-digits="3"] .lab-num { font-size: 14em; }
+.lab.tall[data-digits="4"] .lab-num { font-size: 10.5em; }
 .lab.tall.piece .lab-num { font-size: 10em; }
 .lab.tall .lab-items { -webkit-line-clamp: 3; }
 .lab.tall[data-flags="0"] .lab-items { -webkit-line-clamp: 4; }
@@ -596,7 +612,10 @@ body.bare { padding-bottom: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes puff { 0% { opacity: 0; transform: translateX(0) scale(.6); } 25% { opacity: .9; } 100% { opacity: 0; transform: translateX(-30px) scale(1.5); } }
 .truck-card.finished.celebrate .truck-count { animation: fadein .5s 1s both; }
-.rooms-prog { list-style: none; margin: 10px 0 0; padding: 10px 0 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
+.truck-card { scroll-margin-top: 76px; }
+.rooms-card { margin-top: 14px; }
+.rooms-card h2 { font-size: .95rem; }
+.rooms-prog { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
 .rooms-prog li { position: relative; display: flex; align-items: center; gap: 6px; font-size: .86rem; padding-bottom: 5px; min-width: 0; }
 .rooms-prog li span { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 .rooms-prog li b { font-weight: 750; font-variant-numeric: tabular-nums; }
@@ -720,7 +739,9 @@ button.dot { border: 0; padding: 0; background: none; cursor: pointer; }
 .room-list button.dot { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; }
 .room-list button.dot:hover { background: var(--paper-2); }
 .style-now { display: flex; align-items: center; gap: 10px; }
-.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+#styleBody .kicker { margin: 0 0 8px; }
+#styleBody .style-now { margin: 0 0 14px; }
 .swatch { width: 44px; height: 44px; border-radius: 50%; border: 3px solid #fff; background: var(--rc); box-shadow: 0 0 0 1.5px var(--line-2); }
 .swatch[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--ink); }
 .shape-sw { background: #fff; color: var(--ink); display: grid; place-items: center; border-radius: 12px; }

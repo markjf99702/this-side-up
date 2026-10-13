@@ -73,11 +73,12 @@ export function capsWidth(text, { weight = 860, stretch = '66%' } = {}) {
 }
 
 // One label. `w` and `h` are its size in inches.
-export function label(d, { w = 4, h = 10 / 3, qr = true } = {}) {
+export function label(d, { w = 4, h = 10 / 3, qr = true, edge = false } = {}) {
   const tall = h > w * 1.05;
+  const xwide = w >= h * 1.4; // a half sheet: the list of what's in it gets a column of its own
   const digits = String(d.n).length;
   // The room's name as big as the band takes: 4.1em, smaller for a long name.
-  const room = d.to ? Math.max(2.2, Math.min(4.1, ((tall ? 21.3 : 33.3 * w / h - 11.4) - 0.3) / capsWidth(d.to.name))) : 0;
+  const room = d.to ? Math.max(2.2, Math.min(4.1, ((tall ? 21.3 : 33.3 * w / h - 11.4 - (edge ? 2 : 0)) - 0.3) / capsWidth(d.to.name))) : 0;
   const roomStyle = d.to ? `--rc:${d.to.hex};--ri:${d.to.ink};--rn:${room.toFixed(2)}em;` : '';
   const piece = d.kind === 'piece';
   const name = piece ? d.items[0] || 'Furniture' : '';
@@ -91,11 +92,15 @@ export function label(d, { w = 4, h = 10 / 3, qr = true } = {}) {
   // Where it's coming from, when that isn't a room of the same name.
   const from = d.from && (!d.to || d.from.trim().toLowerCase() !== d.to.name.trim().toLowerCase()) ? `<span class="lab-from">from ${esc(d.from)}</span>` : '';
   // Roughly how many characters of contents fit: two lines across the label, three without flags.
-  const perLine = Math.round((tall ? w : w) * 15);
+  const perLine = Math.round(w * 15);
   const lines = (tall ? 3 : 2) + (flags.length || from ? 0 : 1);
-  const { shown, left } = shortList(rest, d.more, perLine * lines);
+  // A half sheet lists them a line each: seven lines, the last saying how many more if they don't all fit.
+  const fitLines = 7;
+  const { shown, left } = xwide
+    ? (rest.length + (d.more ? 1 : 0) <= fitLines ? { shown: rest, left: d.more } : { shown: rest.slice(0, fitLines - 1), left: rest.length - (fitLines - 1) + d.more })
+    : shortList(rest, d.more, perLine * lines);
   return `
-    <article class="lab ${tall ? 'tall' : 'wide'}${d.to ? '' : ' no-room'}${piece ? ' piece' : ''}" style="--lw:${w};--lh:${h};${roomStyle}" data-digits="${digits}" data-flags="${flags.length}">
+    <article class="lab ${tall ? 'tall' : xwide ? 'wide xwide' : 'wide'}${d.to ? '' : ' no-room'}${piece ? ' piece' : ''}${edge ? ' edge' : ''}" style="--lw:${w};--lh:${h};${roomStyle}" data-digits="${digits}" data-flags="${flags.length}">
       <header class="lab-room">
         ${d.to ? `<span class="lab-shape">${shapeSVG(d.to.shape)}</span>` : ''}
         <span class="lab-room-name">${d.to ? esc(d.to.name) : 'Room not picked'}</span>
@@ -108,7 +113,9 @@ export function label(d, { w = 4, h = 10 / 3, qr = true } = {}) {
       <p class="lab-foot"><span class="lab-mark">${upMark('lab-up2')}This side up</span>${tall && from ? from : ''}</p>
       ${qr && d.link ? qrSVG(d.link, { label: `QR code for ${piece ? name : 'box ' + d.n}`, cls: 'lab-qr' }) : '<span class="lab-qr"></span>'}
       ${flags.length || (from && !tall) ? `<div class="lab-flags">${flags.join('')}${tall ? '' : from}</div>` : ''}
-      <p class="lab-items">${shown.map(esc).join('<i> · </i>')}${left ? `<em>${shown.length ? ` + ${left} more` : `${left} things`}</em>` : ''}</p>
+      ${xwide
+        ? `<ul class="lab-items">${shown.map(t => `<li>${esc(t)}</li>`).join('')}${left ? `<li><em>+ ${left} more</em></li>` : ''}</ul>`
+        : `<p class="lab-items">${shown.map(esc).join('<i> · </i>')}${left ? `<em>${shown.length ? ` + ${left} more` : `${left} things`}</em>` : ''}</p>`}
     </article>`;
 }
 
@@ -127,7 +134,7 @@ export function labelPages(ds, s, { start = 0, nudge = { x: 0, y: 0 }, outline =
         const w = inches(slot.w, u), h = inches(slot.h, u);
         const pos = `--x:${x};--y:${y};--w:${w};--h:${h};--r:${inches(s.round, u)}`;
         if (i === null) return outline ? `<div class="slot empty" style="${pos}"></div>` : '';
-        return `<div class="slot" style="${pos}">${label(ds[i], { w, h })}</div>`;
+        return `<div class="slot" style="${pos}">${label(ds[i], { w, h, edge: !!s.edge })}</div>`;
       }).join('')}
       ${s.cut ? cutLines(s) : ''}
     </section>`).join('');

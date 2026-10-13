@@ -14,7 +14,7 @@ export const SHEETS = [
   },
   {
     id: '5126', name: 'Avery 5126', about: '5½ × 8½ in, 2 to a sheet', also: '5526, 8126, 15516, 18126',
-    unit: 'in', page: [8.5, 11], label: [8.5, 5.5], cols: 1, rows: 2, x0: 0, y0: 0, dx: 8.5, dy: 5.5, round: 0,
+    unit: 'in', page: [8.5, 11], label: [8.5, 5.5], cols: 1, rows: 2, x0: 0, y0: 0, dx: 8.5, dy: 5.5, round: 0, edge: true,
   },
   {
     id: 'letter', name: 'Plain paper, Letter', about: '4 to a page, with cut lines',
