@@ -24,7 +24,7 @@
 - **The first night.** The boxes marked Open first, and a check that the sheets, the towels, the kettle, the chargers and the dog's bowl are actually in one of them.
 - **NFC stickers.** With [Tag Along](https://junkdrawer.works/tag-along/) set to `https://junkdrawer.works/this-side-up/#box/`, each sticker opens its box here (`#box/012` is Box 12). A sticker for a box that isn't packed yet opens Pack with its number.
 - **Two phones.** Send the whole list to another phone as a link, or save a backup file (with the box photos), and open it there. When both have changed things, send it again: the lists are merged box by box, the newer change to each box wins, ticks from the truck come through from both, and two boxes packed with the same number at once are flagged to renumber.
-- **One set of box numbers.** If [Brickyard](https://brickyard.junkdrawer.works/) or Parts Bin already say a LEGO set or a bag of parts is in Box 12, give that box number 12 here too: any free number will do, not just the next one.
+- **One set of box numbers.** If [Brickyard](https://brickyard.junkdrawer.works/) or Parts Bin already say a LEGO set or a bag of parts is in Box 12, give that box number 12 here too: any free number will do, not just the next one. The boxes after it carry on from where the count was (3, 4, 5…) and step over 12, so there are no gaps to explain to the movers.
 - No account and no server. The list stays in your browser (and the photos in its IndexedDB) unless you send it. You can save it as a spreadsheet for the movers or the insurance. It works offline, in a new house with no Wi-Fi yet, and installs to a phone's home screen.
 
 ## Running it
