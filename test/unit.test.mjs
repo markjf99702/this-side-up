@@ -100,6 +100,10 @@ test('search finds the kettle, plurals and numbers', () => {
   assert.equal(M.search(list, 'sofa')[0].box.n, 4);
   assert.deepEqual(M.search(list, 'kitchen').map(r => r.box.n), [1], 'a room finds what is going there');
   assert.deepEqual(M.search(list, 'fragile').map(r => r.box.n), [1]);
+  // "glass" finds the glasses, not every box that's marked Fragile.
+  M.putBox(list, M.newBox(list, { items: ['Wine glasses', 'Tumblers'], fragile: true }, T0), T0);
+  assert.deepEqual(M.search(list, 'glass').map(r => r.box.n), [6]);
+  assert.deepEqual(M.search(list, 'fragile').map(r => r.box.n).sort(), [1, 6]);
   assert.deepEqual(M.search(list, 'open first').map(r => r.box.n).sort(), [1, 3]);
   assert.deepEqual(M.search(list, 'piano'), []);
   assert.deepEqual(M.search(list, '   '), []);

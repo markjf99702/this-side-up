@@ -235,7 +235,7 @@ export function search(list, query) {
       ...box.items.map((text, i) => ({ text: norm(text), line: i, weight: i === 0 ? 12 : 10 })),
       { text: norm(to?.name), weight: 6, room: 'to' },
       { text: norm(from?.name), weight: 4, room: 'from' },
-      { text: [box.fragile && 'fragile glass', box.heavy && 'heavy', box.first && 'open first', box.car && 'car', box.kind === 'piece' && 'furniture piece'].filter(Boolean).join(' '), weight: 3 },
+      { text: [box.fragile && 'fragile', box.heavy && 'heavy', box.first && 'open first', box.car && 'car', box.kind === 'piece' && 'furniture piece'].filter(Boolean).join(' '), weight: 3 },
     ];
     let score = 0;
     const lines = new Set();
