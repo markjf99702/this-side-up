@@ -219,6 +219,21 @@ export function tally(list, sigOf = null) {
 
 export const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[’']/g, "'");
 
+// A searched word and the other ways a box might spell it: "mugs" finds "mug", "knife" finds "knives" (and back),
+// "battery" finds "batteries". The word itself comes first.
+export function wordForms(t) {
+  const v = [t];
+  const add = w => { if (!v.includes(w)) v.push(w); };
+  if (t.length > 3 && t.endsWith('es')) add(t.slice(0, -2));
+  if (t.length > 3 && t.endsWith('s')) add(t.slice(0, -1));
+  if (t.length > 4 && t.endsWith('ves')) { add(t.slice(0, -3) + 'fe'); add(t.slice(0, -3) + 'f'); }
+  if (t.length > 4 && t.endsWith('ies')) add(t.slice(0, -3) + 'y');
+  if (t.length > 3 && t.endsWith('fe')) add(t.slice(0, -2) + 'ves');
+  else if (t.length > 3 && t.endsWith('f')) add(t.slice(0, -1) + 'ves');
+  if (t.length > 3 && /[^aeiou]y$/.test(t)) add(t.slice(0, -1) + 'ies');
+  return v;
+}
+
 // Each word of the search has to be somewhere in the box: in a line of what's in it, a room, or a flag.
 // "mugs" also finds "mug", and "12" or "box 12" goes straight to Box 12.
 export function search(list, query) {
@@ -226,12 +241,6 @@ export function search(list, query) {
   if (!q) return [];
   const numberOnly = q.match(/^(?:box|no\.?|#|number)?\s*(\d{1,4})$/);
   const terms = q.split(/\s+/).filter(t => t && !/^(box|the|a|an|my|in|of)$/.test(t));
-  const variants = t => {
-    const v = [t];
-    if (t.length > 3 && t.endsWith('es')) v.push(t.slice(0, -2));
-    if (t.length > 3 && t.endsWith('s')) v.push(t.slice(0, -1));
-    return v;
-  };
   const results = [];
   for (const box of live(list)) {
     if (numberOnly && box.n === Number(numberOnly[1])) { results.push({ box, score: 1000, lines: [], why: 'number' }); continue; }
@@ -249,7 +258,7 @@ export function search(list, query) {
       let best = 0;
       for (const f of fields) {
         if (!f.text) continue;
-        for (const v of variants(t)) {
+        for (const v of wordForms(t)) {
           const at = f.text.indexOf(v);
           if (at < 0) continue;
           const wordStart = at === 0 || /[^a-z0-9]/.test(f.text[at - 1]);

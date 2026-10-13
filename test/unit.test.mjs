@@ -7,6 +7,7 @@ import { nextStyle, COLOURS, SHAPES } from '../js/rooms.js';
 import { boxFragment, boxLink, readBoxFragment, readNumber, enc, dec, QR_BYTES, SITE, pack, unpack, listLink, readList, base } from '../js/payload.js';
 import { SHEETS, slots, pages, perSheet, fmt } from '../js/sheets.js';
 import { layout, label } from '../js/labels.js';
+import { marked } from '../js/common.js';
 
 const T0 = 1_760_000_000_000;
 
@@ -127,6 +128,20 @@ test('search finds the kettle, plurals and numbers', () => {
   assert.deepEqual(M.search(list, 'open first').map(r => r.box.n).sort(), [1, 3]);
   assert.deepEqual(M.search(list, 'piano'), []);
   assert.deepEqual(M.search(list, '   '), []);
+  // A word spelt the other way: "knife" finds the knives, "battery" the batteries, and back again.
+  M.putBox(list, M.newBox(list, { items: ['The good knives', 'Batteries', 'Shelf pins'] }, T0), T0);
+  M.putBox(list, M.newBox(list, { items: ['Knife block', 'Spare battery', 'Bookshelves'] }, T0), T0);
+  assert.deepEqual(M.search(list, 'knife').map(r => r.box.n).sort(), [7, 8]);
+  assert.deepEqual(M.search(list, 'knives').map(r => r.box.n).sort(), [7, 8]);
+  assert.deepEqual(M.search(list, 'battery').map(r => r.box.n).sort(), [7, 8]);
+  assert.deepEqual(M.search(list, 'batteries').map(r => r.box.n).sort(), [7, 8]);
+  assert.deepEqual(M.search(list, 'shelves').map(r => r.box.n).sort(), [7, 8]);
+  assert.deepEqual(M.search(list, 'knife')[0].lines, [0]);
+  // And the line that matched is marked, whichever way it's spelt.
+  assert.match(marked('The good knives', 'knife'), /<mark>knives<\/mark>/);
+  assert.match(marked('Knife block', 'knives'), /<mark>Knife<\/mark>/);
+  assert.match(marked('Batteries', 'battery'), /<mark>Batteries<\/mark>/);
+  assert.match(marked('Wine glasses', 'glass'), /<mark>glass<\/mark>es/);
 });
 
 test('the first night finds the towels, not the tea towels', () => {

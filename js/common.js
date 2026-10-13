@@ -33,7 +33,8 @@ function marked(text, query) {
   const n = M.norm(text);
   const spans = [];
   for (const w of words) {
-    for (const v of [w, w.replace(/e?s$/, '')]) {
+    // The same spellings the search tries, so a box it found always has its match marked.
+    for (const v of M.wordForms(w)) {
       if (v.length < 2) continue;
       let at = n.indexOf(v);
       if (at >= 0) { spans.push([at, at + v.length]); break; }
