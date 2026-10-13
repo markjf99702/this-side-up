@@ -9,7 +9,7 @@
   &nbsp;
   <img src="docs/phone-boxes.png" alt="Every box: a search box asking where's the kettle, totals of boxes, furniture and fragile boxes, 13 labels to print, and the list starting with Box 1, Kitchen, kettle, mugs and coffee" width="250">
   &nbsp;
-  <img src="docs/phone-truck.png" alt="Moving day: a removal truck most of the way full, 21 of 28 on the truck, and Box 23 from the Garage keyed in on a big number pad, heavy and open first" width="250">
+  <img src="docs/phone-truck.png" alt="Moving day: a removal truck most of the way full, 21 of 28 on the truck, the sofa just ticked on with an Undo, and Box 23 from the Garage keyed in on a big number pad, heavy and open first" width="250">
 </p>
 
 ## How it works

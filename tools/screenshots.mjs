@@ -44,14 +44,15 @@ async function open(viewport, deviceScaleFactor, { example = true } = {}) {
   return page;
 }
 
-// Screenshots come out of Chromium as full-colour PNGs; a 256-colour palette keeps them small.
-async function save(page, file, opts = {}) {
+// Screenshots come out of Chromium as full-colour PNGs; a palette keeps them small (256 colours, or fewer for the
+// link preview, which is fetched every time the link is shared).
+async function save(page, file, { colours = 256, ...opts } = {}) {
   await page.mouse.move(0, 0); // no row lit up as if the pointer were on it
   const shot = await page.screenshot(opts);
   if (!UPNG) { await writeFile(join(root, file), shot); return; }
   const img = UPNG.decode(shot);
   const rgba = UPNG.toRGBA8(img)[0];
-  await writeFile(join(root, file), Buffer.from(UPNG.encode([rgba], img.width, img.height, 256)));
+  await writeFile(join(root, file), Buffer.from(UPNG.encode([rgba], img.width, img.height, colours)));
 }
 
 // Phone screenshots for the README.
@@ -76,17 +77,19 @@ async function save(page, file, opts = {}) {
   await page.waitForTimeout(200);
   await save(page, 'docs/phone-boxes.png');
 
-  // Moving day: most of the boxes on, and the drill box keyed in.
+  // Moving day: most of the boxes on, the sofa ticked on a moment ago, and the drill box keyed in.
   await page.evaluate(async () => {
     const { store } = await import('./js/store.js');
     const M = await import('./js/model.js');
-    for (const b of M.live(store.list)) if (b.n <= 22 || b.n === 27) M.setStage(b, 'load', true);
+    for (const b of M.live(store.list)) if (b.n <= 22) M.setStage(b, 'load', true);
     store.save();
   });
   await page.goto(base + '#/truck/load');
   await page.locator('.truck-screen[data-stage="load"]').waitFor();
+  for (const k of ['2', '7', 'tick']) await page.click(`[data-key="${k}"]`);
+  await page.locator('#last button').waitFor();
   for (const k of ['2', '3']) await page.click(`[data-key="${k}"]`);
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(800); // until the box that just went on has popped into the truck
   await save(page, 'docs/phone-truck.png');
   await page.context().close();
 }
@@ -121,7 +124,7 @@ async function save(page, file, opts = {}) {
       </div>`;
   });
   await page.waitForTimeout(300);
-  await save(page, 'og.png');
+  await save(page, 'og.png', { colours: 128 });
   await page.context().close();
 }
 
