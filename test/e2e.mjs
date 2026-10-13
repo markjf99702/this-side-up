@@ -267,6 +267,15 @@ await page.waitForURL(new RegExp(`#/box/${box1}$`));
 await page.goto(base + '#box/003');
 await page.waitForURL(/#\/box\//);
 assert.match(await page.locator('h1').innerText(), /Box 3/i);
+// A sticker for a box that isn't packed yet offers to pack it, with the sticker's number.
+await page.goto(base + '#box/042');
+assert.match(await text(page), /No Box 42 on this phone yet/);
+assert.equal(await page.locator('.tagline').count(), 0, 'no "number your own boxes" for the phone with the list');
+await page.click('a:has-text("Pack Box 42")');
+await page.waitForURL(/#\/new\/42$/);
+assert.equal(await page.inputValue('#num'), '42');
+await page.waitForTimeout(300);
+assert.equal(await page.evaluate(() => localStorage.getItem('this-side-up.draft')), null, 'just the number: nothing to keep');
 
 // ---------- Printing labels ----------
 step('printing labels');

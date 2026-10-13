@@ -218,17 +218,33 @@ export function labelView(p, link, mine = [], n = null) {
     return;
   }
   if (!p) {
+    // A sticker for a number this phone hasn't packed: a removed box can come back, or the box in front of you can
+    // be packed with the sticker's number.
+    const gone = list && n !== null ? list.boxes.find(b => b.n === n && b.gone) : null;
+    const known = list && n !== null && n > 0;
     app.innerHTML = `
       <div class="narrow">
         <section class="scanned plain">
           <p class="kicker">This Side Up</p>
           <h1 class="scan-num">${n !== null ? `Box ${n}` : 'A box label'}</h1>
-          <p>${n !== null ? (list ? `Box ${n} isn’t in this phone’s list.` : 'This phone doesn’t have the list for this move. Open the sticker’s link on the phone that does.') : 'This link is damaged: the end of it is missing. Try reading the label again.'}</p>
-          ${list ? '<a class="btn" href="#/">Every box</a>' : ''}
+          <p>${n === null ? 'This link is damaged: the end of it is missing. Try reading the label again.'
+            : !list ? 'This phone doesn’t have the list for this move. Open the sticker’s link on the phone that does.'
+            : gone ? `Box ${n} was removed from this phone’s list.`
+            : `No Box ${n} on this phone yet. If that’s the box in front of you, pack it now: it gets number ${n}, to match its sticker.`}</p>
+          ${known ? `<div class="row">${gone ? '<button class="btn primary" data-act="restore">Put it back</button>' : `<a class="btn primary" href="#/new/${n}">${icon('pack')} Pack Box ${n}</a>`}<a class="btn" href="#/">Every box</a></div>`
+            : list ? '<a class="btn" href="#/">Every box</a>' : ''}
         </section>
-        ${tagline()}
+        ${list ? '' : tagline()}
       </div>`;
-    on({});
+    on({
+      click(e) {
+        if (!e.target.closest('[data-act="restore"]') || !gone) return;
+        gone.gone = 0;
+        M.putBox(list, gone);
+        store.save();
+        go(`/box/${gone.uid}`, true);
+      },
+    });
     return;
   }
   const d = fromLink(p, link);

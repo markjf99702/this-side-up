@@ -18,6 +18,7 @@ import { more } from './more.js';
 const routes = [
   [/^\/?$/, 'boxes', () => home()],
   [/^\/new$/, 'pack', () => pack()],
+  [/^\/new\/(\d{1,4})$/, 'pack', n => pack(null, Number(n))],
   [/^\/box\/([\w-]+)\/edit$/, 'boxes', u => pack(u)],
   [/^\/box\/([\w-]+)$/, 'boxes', u => boxScreen(u)],
   [/^\/truck(?:\/(load|unload|unpack))?$/, 'truck', s => truck(s)],
