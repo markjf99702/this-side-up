@@ -291,6 +291,7 @@ export function pack(editUid, number) {
       }
       if (t.dataset.act === 'own') { ownList(); return; }
       if (t.dataset.act === 'fresh') {
+        clearTimeout(timer); // or the box being thrown away is kept again a moment later
         drafts.set(editing ? editing.uid : null, null);
         pack(editUid);
         return;

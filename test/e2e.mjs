@@ -54,6 +54,11 @@ const toastSays = (page, re) => page.locator('#toast:not([hidden])', { hasText: 
 // A box just packed says so beside the next one's number.
 const savedSays = (page, re) => page.locator('.saved-note', { hasText: re }).waitFor({ timeout: 8000 });
 const hash = page => page.evaluate(() => location.hash);
+// The box list once it's drawn with this many rows (the address changes a moment before the screen does).
+const rows = async (page, n) => {
+  await page.waitForFunction(k => document.querySelectorAll('.boxrow').length === k, n, { timeout: 8000 }).catch(() => {});
+  return page.locator('.boxrow').count();
+};
 
 async function packBox(page, { from, to, things, flags = [], piece = false, name }) {
   if (!(await hash(page)).startsWith('#/new')) await page.goto(base + '#/new');
@@ -576,7 +581,7 @@ await sam.page.locator('[data-act="take"]').waitFor();
 assert.match(await text(sam.page), /Boston to Oakland.*5 boxes/s);
 await sam.page.click('[data-act="take"]');
 await sam.page.waitForURL(/#\/$/);
-assert.equal(await sam.page.locator('.boxrow').count(), 5);
+assert.equal(await rows(sam.page, 5), 5);
 // The same label opens in Sam's list too: it's the same move.
 await sam.page.goto(labelLink);
 await sam.page.waitForURL(/#\/box\//);
@@ -594,7 +599,7 @@ assert.match(offer, /Two boxes will both be number 6/);
 await page.click('[data-act="merge"]');
 await page.waitForURL(/#\/$/);
 await toastSays(page, /Merged: 1 new/);
-assert.equal(await page.locator('.boxrow').count(), 7);
+assert.equal(await rows(page, 7), 7);
 assert.match(await page.locator('.banner.warn').innerText(), /Two boxes are both number 6/);
 await page.click('.banner.warn a');
 await page.click('[data-act="renumber"]');
@@ -669,7 +674,7 @@ await fresh.page.click('.pack .banner [data-act="own"]');
 assert.match(await fresh.page.locator('.sheet').innerText(), /You packed Box 32 \(My real kettle\) in it yourself/);
 await fresh.page.click('#sheetKeep');
 await fresh.page.waitForURL(/#\/$/);
-assert.equal(await fresh.page.locator('.boxrow').count(), 1, 'just the box packed by hand');
+assert.equal(await rows(fresh.page, 1), 1, 'just the box packed by hand');
 assert.match(await fresh.page.locator('.boxrow').innerText(), /My real kettle/);
 assert.equal(await fresh.page.locator('.banner').count(), 0, 'and the example is gone');
 await fresh.page.click('.tabs a[data-tab="pack"]');
