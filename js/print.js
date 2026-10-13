@@ -1,7 +1,7 @@
 // Printing: box labels on a label sheet or plain paper, colour signs for the doors at the new place, and a test
 // sheet for lining labels up. Pages are drawn true to size in inches; the preview is the same pages, shrunk.
 import { store } from './store.js';
-import { app, esc, on, toast, icon, plural, $, framed } from './ui.js';
+import { app, esc, on, toast, icon, plural, $, framed, sheet } from './ui.js';
 import * as M from './model.js';
 import { SHEETS, sheet as sheetOf, perSheet, pages, nudgeStep, fmt } from './sheets.js';
 import { labelPages, testPage, signPage, fromBox } from './labels.js';
@@ -76,7 +76,7 @@ function labels() {
           <button class="chip" data-which="all" aria-pressed="${which === 'all'}">All <small>${all.length}</small></button>
           <button class="chip" data-which="pick" aria-pressed="${which === 'pick'}">Pick</button>
         </div>
-        ${which === 'new' && changed ? `<p class="hint">Includes ${plural(changed, 'box')} changed since ${changed === 1 ? 'its label was' : 'their labels were'} printed.</p>` : ''}
+        ${which === 'new' && changed ? `<p class="hint">Includes ${plural(changed, 'box', 'boxes')} changed since ${changed === 1 ? 'its label was' : 'their labels were'} printed.</p>` : ''}
         ${which === 'pick' ? `<ul class="picklist">${all.map(b => `<li><label><input type="checkbox" data-pick="${b.uid}"${picked?.has(b.uid) ? ' checked' : ''}>${tile(b, list, 'small')}<span>${esc(M.room(list, b.to)?.name || 'No room')}<small>${esc(b.items.slice(0, 3).join(', '))}</small></span></label></li>`).join('')}</ul>` : ''}
       </section>`}
     <section class="card">
@@ -134,10 +134,21 @@ function labels() {
 }
 
 function printLabels(boxes, s, start) {
-  const list = store.list;
   preparePrint();
   window.print();
-  // Mark them printed, with a way back if the printer jammed.
+  // The print dialog may have been cancelled, or (on Android) still be open: ask before marking anything printed.
+  const n = boxes.length;
+  const next = (start + n) % perSheet(s);
+  sheet(`
+    <h2>Did they come out right?</h2>
+    <p>Mark ${n === 1 ? 'this label' : `these ${n} labels`} printed${perSheet(s) > 1 ? `, and next time start ${next ? `at label ${next + 1} on that sheet` : 'on a fresh sheet'}` : ''}. If the printer jammed or the print was cancelled, they stay on the list to print.</p>
+    <div class="row"><button class="btn" data-close>Not yet</button><button class="btn primary" id="sheetGo">${icon('check')} Yes, mark them printed</button></div>`,
+  (body, close) => { body.querySelector('#sheetGo').onclick = () => { close(); markPrinted(boxes, s, start); }; });
+}
+
+function markPrinted(boxes, s, start) {
+  const list = store.list;
+  // Mark them printed, with a way back if it turns out they didn't.
   const before = boxes.map(b => [b, b.printed, b.printedSig]);
   const now = Date.now();
   for (const b of boxes) { b.printed = now; b.printedSig = labelSig(b, list); }

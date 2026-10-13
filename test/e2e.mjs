@@ -312,9 +312,19 @@ if (has('pdftoppm')) {
 } else {
   console.log('  (pdftoppm not found: skipped reading the printed codes)');
 }
+// Labels are marked printed only once he says they came out: a cancelled print leaves them on the list.
 await page.click('[data-act="print"]');
-await toastSays(page, /5 labels marked as printed/);
+await page.locator('.sheet[open] #sheetGo').waitFor();
 assert.equal(await page.evaluate(() => window.__printed), 1);
+assert.match(await page.locator('.sheet').innerText(), /next time start at label 2 on that sheet/i);
+await page.click('.sheet [data-close]');
+assert.match(await page.locator('[data-which="new"]').innerText(), /5/, 'Not yet: still five to print');
+assert.equal(await page.getAttribute('[data-start="2"]', 'aria-pressed'), 'true', 'and still starting at label 3');
+assert.equal(await page.locator('#printBadge').innerText(), '5');
+await page.click('[data-act="print"]');
+await page.click('.sheet #sheetGo');
+await toastSays(page, /5 labels marked as printed/);
+assert.equal(await page.evaluate(() => window.__printed), 2);
 assert.equal(await page.isHidden('#printBadge'), true, 'nothing left to print');
 assert.match(await page.locator('#controls').innerText(), /Every label is printed/);
 assert.equal(await page.getAttribute('[data-start="1"]', 'aria-pressed'), 'true', 'the next run starts after the last label used');
@@ -331,6 +341,7 @@ await page.waitForURL(/#\/print\/box\//);
 assert.match(await page.locator('#controls').innerText(), /Just Box 1/);
 assert.equal(await page.locator('#preview .slot .lab').count(), 1);
 await page.click('[data-act="print"]');
+await page.click('.sheet #sheetGo');
 await toastSays(page, /1 label marked as printed/);
 assert.equal(await page.isHidden('#printBadge'), true);
 await page.goto(base + '#/print');
