@@ -588,7 +588,7 @@ body.bare { padding-bottom: 0; }
 .lab.tall[data-digits="4"] .lab-num { font-size: 10.5em; }
 .lab.tall.piece .lab-num { font-size: 10em; }
 .lab.tall .lab-foot { grid-area: foot; align-self: center; gap: .6em; margin-top: .9em; }
-.lab.tall .lab-from { white-space: normal; text-align: left; font-size: 1.7em; flex: none; }
+.lab.tall .lab-from { white-space: normal; text-align: left; font-size: 1.7em; flex: none; align-self: stretch; padding-left: .1em; }
 .lab.tall .lab-mark { font-size: 2em; }
 .lab.tall .lab-flags { flex-wrap: wrap; }
 
