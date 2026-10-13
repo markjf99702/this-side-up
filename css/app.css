@@ -550,6 +550,11 @@ body.bare { padding-bottom: 0; }
 .lab-flags[data-rows="1"] { flex-wrap: nowrap; }
 .lab-flags .lab-from { flex: 1 1 0; }
 .lab-flags .lab-from.own { flex-basis: 100%; }
+/* Where the flags leave no line for what's inside: the first things in the room left on their row, or "41 things". */
+.lab-snip { flex: 1 1 0; min-width: 0; align-self: center; display: flex; gap: .3em; font-size: 1.62em; line-height: 1.22; font-weight: 560; white-space: nowrap; }
+.lab-snip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.lab-snip i { font-style: normal; color: #9a9184; }
+.lab-snip em { flex: none; font-style: normal; font-weight: 750; color: #555; }
 .lab-flag .ficon { width: 1.15em; height: 1.15em; color: inherit; }
 .lab-fragile { color: var(--stamp); transform: rotate(-2.5deg); border-width: .18em; box-shadow: inset 0 0 0 .1em #fff, inset 0 0 0 .2em var(--stamp); padding: .4em .8em .4em .55em; }
 .lab-first { background: #111; color: #fff; border-color: #111; }

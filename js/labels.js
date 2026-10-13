@@ -120,6 +120,9 @@ const flagWidth = (f, short) => {
   return ownWidth('flag|' + k, flagHTML(f, short), FLAG_WIDTH[k]);
 };
 const fromWidth = text => ownWidth('from|' + text, `<span class="lab-from">from ${esc(text)}</span>`, (text.length + 5) * 0.56);
+// What goes after the flags when there's no line for the list (inner HTML of .lab-snip), in the list's ems.
+const snipWidth = html => ownWidth('snip|' + html, `<span class="lab-snip">${html}</span>`, html.replace(/<[^>]*>|&nbsp;/g, ' ').replace(/&\w+;/g, '&').length * 0.55);
+const countWidth = text => snipWidth(`<em>${esc(text)}</em>`);
 
 // Flags into rows `room` ems wide: as big as they can be while they still fit on one row, with "In the car" for
 // "Goes in the car" if that's what it takes. Rows of the biggest size when even the smallest won't fit on one.
@@ -228,7 +231,15 @@ export function layout(d, { w = 4, h = 10 / 3, edge = false } = {}) {
     lines = Math.max(0, Math.floor((free - LIST_GAP) / LINE));
     perLine = Math.floor(cw / (ITEM_FONT * 0.56));
   }
-  return { kind, em, W, H, cw, ch, numH, nameLines, fl, ff: f.ff, short: f.short, rows: f.rows, from, fromAt, flagsH: block, lines, perLine };
+  // No line left for what's inside (four flags on a small label): the first things go after the flags, in the
+  // room left on their row, or at least how many there are.
+  let snip = 0;
+  const things = piece ? 0 : d.items.length + (d.more || 0);
+  if (kind !== 'xwide' && !lines && things && fl.length && fromAt !== 'flags') {
+    const room = cw * 0.98 - f.last - FLAG_GAP;
+    if (room >= countWidth(`${things} things`) * ITEM_FONT) snip = room;
+  }
+  return { kind, em, W, H, cw, ch, numH, nameLines, fl, ff: f.ff, short: f.short, rows: f.rows, from, fromAt, flagsH: block, lines, perLine, snip };
 }
 
 // One label. `w` and `h` are its size in inches.
@@ -246,6 +257,15 @@ export function label(d, { w = 4, h = 10 / 3, qr = true, edge = false } = {}) {
   // A half sheet lists them a line each, the last saying how many more if they don't all fit.
   const room = L.lines - (L.fromAt === 'list' ? Math.min(2, Math.ceil((L.from.length + 5) / L.perLine)) : 0);
   const { shown, left } = xwide ? listFit(rest, d.more, room, L.perLine) : shortList(rest, d.more, L.lines, L.perLine);
+  // After the flags, when there's no line for the list: as many whole things as fit, or how many there are.
+  let snip = '';
+  if (L.snip) {
+    const n = rest.length + (d.more || 0);
+    const part = k => `<span>${rest.slice(0, k).map(esc).join('<i>&nbsp;· </i>')}</span>${n - k ? `<em>+ ${n - k} more</em>` : ''}`;
+    let k = 0;
+    while (k < rest.length && snipWidth(part(k + 1)) * ITEM_FONT <= L.snip) k++;
+    snip = `<span class="lab-snip">${k ? part(k) : `<em>${n} ${n === 1 ? 'thing' : 'things'}</em>`}</span>`;
+  }
   const list = xwide
     ? `<ul class="lab-items">${shown.map(t => `<li>${esc(t)}</li>`).join('')}${left && room > 0 ? `<li><em>+ ${left} more</em></li>` : ''}${L.fromAt === 'list' ? `<li class="lab-from-li">from ${esc(L.from)}</li>` : ''}</ul>`
     : L.lines ? `<p class="lab-items">${shown.map(esc).join('<i>&nbsp;· </i>')}${left ? (shown.length ? ` <em>+ ${left} more</em>` : `<em>${left} ${left === 1 ? 'thing' : 'things'}</em>`) : ''}</p>` : '';
@@ -262,7 +282,7 @@ export function label(d, { w = 4, h = 10 / 3, qr = true, edge = false } = {}) {
       </div>
       <p class="lab-foot"><span class="lab-mark">${upMark('lab-up2')}This side up</span>${L.fromAt === 'foot' ? from : ''}</p>
       ${qr && d.link ? qrSVG(d.link, { label: `QR code for ${piece ? name : 'box ' + d.n}`, cls: 'lab-qr' }) : '<span class="lab-qr"></span>'}
-      ${flags.length || L.fromAt === 'flags' || L.fromAt === 'row' ? `<div class="lab-flags" data-rows="${L.rows + (L.fromAt === 'row' ? 1 : 0)}">${flags.join('')}${L.fromAt === 'flags' || L.fromAt === 'row' ? from : ''}</div>` : ''}
+      ${flags.length || L.fromAt === 'flags' || L.fromAt === 'row' ? `<div class="lab-flags" data-rows="${L.rows + (L.fromAt === 'row' ? 1 : 0)}">${flags.join('')}${snip}${L.fromAt === 'flags' || L.fromAt === 'row' ? from : ''}</div>` : ''}
       ${list}
     </article>`;
 }

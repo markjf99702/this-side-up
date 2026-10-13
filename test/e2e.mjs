@@ -428,13 +428,17 @@ const crowded = await crowd.page.evaluate(async () => {
       const qr = host.querySelector('.lab-qr').getBoundingClientRect();
       const where = `${s.id} box ${box.n}`;
       if (qr.bottom > lab.bottom + 0.5 || qr.right > lab.right + 0.5) out.push(`${where}: the code runs off the label`);
-      for (const el of host.querySelectorAll('.lab-items, .lab-flags, .lab-flag, .lab-from, .lab-numwrap, .lab-foot')) {
+      for (const el of host.querySelectorAll('.lab-items, .lab-flags, .lab-flag, .lab-snip, .lab-from, .lab-numwrap, .lab-foot')) {
         const r = el.getBoundingClientRect();
-        if (el.matches('.lab-items, .lab-flags, .lab-flag') && hit(r, qr)) out.push(`${where}: ${el.className} runs into the code`);
+        if (el.matches('.lab-items, .lab-flags, .lab-flag, .lab-snip') && hit(r, qr)) out.push(`${where}: ${el.className} runs into the code`);
         if (r.bottom > lab.bottom - 1 || r.right > lab.right - 1) out.push(`${where}: ${el.className} runs off the label`);
       }
       const items = host.querySelector('p.lab-items');
       if (items && items.scrollHeight > items.clientHeight + 1) out.push(`${where}: the list is cut off`);
+      // A box with things in it says something about them, even where four flags leave no line for the list.
+      if (box.kind === 'box' && box.items.length && !host.querySelector('.lab-items, .lab-snip')) out.push(`${where}: nothing about what's inside`);
+      const snip = host.querySelector('.lab-snip > span');
+      if (snip && snip.scrollWidth > snip.clientWidth + 1) out.push(`${where}: the things after the flags are cut short`);
     }
   }
   host.remove();

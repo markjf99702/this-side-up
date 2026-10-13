@@ -354,6 +354,26 @@ test('every label makes room: flags on one row where they fit, the list gets the
   assert.equal(layout(box({ fragile: true, first: true, heavy: true, car: true, from: 'Primary bedroom' }), { w: half.label[0], h: half.label[1], edge: true }).rows, 1);
 });
 
+test('four flags that leave no line for the list still say what’s inside, after the flags', () => {
+  const office = { name: 'Office', hex: '#f0e442', ink: '#262200', shape: 3 };
+  const books = Array.from({ length: 41 }, (_, i) => `Book ${i + 1}`);
+  const d = { n: 16, kind: 'box', items: books, more: 0, to: office, from: 'Office', fragile: true, heavy: true, first: true, car: true };
+  let checked = 0;
+  for (const s of SHEETS.filter(x => !x.edge)) {
+    const inch = v => (s.unit === 'mm' ? v / 25.4 : v);
+    const size = { w: inch(s.label[0]), h: inch(s.label[1]) };
+    const L = layout(d, size);
+    if (L.lines) continue;
+    checked++;
+    assert.ok(L.snip > 0, `${s.id}: room after the flags`);
+    assert.match(label(d, size), /class="lab-snip">(<span>Book 1[^<]*<\/span><em>\+ \d+ more<\/em>|<em>41 things<\/em>)/, `${s.id}: the first things or how many`);
+  }
+  assert.ok(checked >= 2, 'four flags leave no line on the smaller labels');
+  // Furniture keeps its name, and a box with nothing in it says nothing.
+  assert.equal(layout({ ...d, kind: 'piece', items: ['Sofa', 'Feet in Box 3'] }, { w: 4, h: 10 / 3 }).snip, 0);
+  assert.equal(layout({ ...d, items: [] }, { w: 4, h: 10 / 3 }).snip, 0);
+});
+
 test('a long first thing is cut at a word, so the label can still say how many more', () => {
   const d = { n: 3, kind: 'box', items: ['LEGO sets: Bonsai Tree, Tree House, the big castle and the instructions for all of them', 'Mugs'], more: 0, to: null, from: '', first: true };
   const html = label(d, { w: 3.5, h: 5 });
