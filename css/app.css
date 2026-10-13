@@ -451,6 +451,7 @@ textarea.input { resize: vertical; line-height: 1.5; }
 .scanned { --rc: #d9d2c5; --ri: #3b3329; background: var(--paper); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
 .scanned.plain { padding: 22px 18px; }
 .scanned.plain p { color: var(--ink-2); }
+.scanned.plain > :last-child { margin-bottom: 0; }
 .scan-room { display: flex; align-items: center; gap: 14px; padding: 18px 18px 16px; background: var(--rc); color: var(--ri); }
 .scan-room.none { background: repeating-linear-gradient(-45deg, #f1ede6 0 10px, #fff 0 20px); color: var(--muted); }
 .scan-room > span:not(.scan-shape) { display: grid; flex: 1 1 auto; min-width: 0; }
