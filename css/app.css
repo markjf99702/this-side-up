@@ -210,7 +210,15 @@ textarea.input { resize: vertical; line-height: 1.5; }
 .f-car { color: #2a6fb0; }
 
 /* ---------- Welcome ---------- */
-.welcome { max-width: 620px; margin: 6px auto 0; }
+.welcome { max-width: 620px; margin: 6px auto 0; display: grid; gap: 14px; }
+.sample { margin: 0; }
+.sample .boxside { padding: 18px 20px 22px; }
+.sample figcaption { margin: 8px 6px 0; text-align: center; color: var(--kraft-ink); font-size: .9rem; }
+@media (min-width: 900px) {
+  .welcome { max-width: 1000px; grid-template-columns: minmax(0, 1fr) 420px; align-items: center; column-gap: 28px; }
+  .welcome > .how, .welcome > .hint { grid-column: 1 / -1; }
+  .sample .boxside { transform: rotate(1.2deg); }
+}
 .hero {
   position: relative; overflow: hidden;
   background: var(--paper); border-radius: 18px; box-shadow: var(--shadow);
@@ -219,7 +227,7 @@ textarea.input { resize: vertical; line-height: 1.5; }
 .hero h1 { font: 800 2.6rem/.92 var(--stencil); letter-spacing: .02em; text-transform: uppercase; margin: 0 0 12px; }
 .hero p { margin: 0 0 12px; color: var(--ink-2); font-size: 1.04rem; }
 .hero .row { margin-top: 16px; }
-.how { display: grid; gap: 0; margin: 14px 0 12px; padding: 4px 16px; list-style: none; background: var(--paper); border-radius: 18px; box-shadow: var(--shadow); }
+.how { display: grid; gap: 0; margin: 0; padding: 4px 16px; list-style: none; background: var(--paper); border-radius: 18px; box-shadow: var(--shadow); }
 .how li { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: start; padding: 14px 0; color: var(--ink-2); border-bottom: 1px solid var(--line); }
 .how li:last-child { border-bottom: 0; }
 .how b { color: var(--ink); }
@@ -613,6 +621,8 @@ body.bare { padding-bottom: 0; }
 @keyframes puff { 0% { opacity: 0; transform: translateX(0) scale(.6); } 25% { opacity: .9; } 100% { opacity: 0; transform: translateX(-30px) scale(1.5); } }
 .truck-card.finished.celebrate .truck-count { animation: fadein .5s 1s both; }
 .truck-card { scroll-margin-top: 76px; }
+.empty-truck { text-align: center; }
+.empty-truck .truck { height: 96px; margin: 0 auto 10px; }
 .rooms-card { margin-top: 14px; }
 .rooms-card h2 { font-size: .95rem; }
 .rooms-prog { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }

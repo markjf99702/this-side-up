@@ -22,6 +22,19 @@ export function truck(stage) {
   stage = ['load', 'unload', 'unpack'].includes(store.prefs.stage) ? store.prefs.stage : 'load';
   const list = store.list;
   typed = '';
+  if (!M.live(list).length) {
+    app.innerHTML = `
+      <div class="truck-screen narrow">
+        <div class="truck-head"><h1>Moving day</h1></div>
+        <section class="card empty-truck">
+          ${truckSVG('load', 0, 0, false)}
+          <p><b>Nothing to count yet.</b> Pack some boxes first: on moving day this is where you tick them onto the truck, off again at the other end, and unpacked.</p>
+          <a class="btn primary" href="#/new">${icon('pack')} Pack a box</a>
+        </section>
+      </div>`;
+    on({});
+    return;
+  }
 
   app.innerHTML = `
     <div class="truck-screen" data-stage="${stage}">

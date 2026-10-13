@@ -4,6 +4,7 @@ import { app, esc, on, go, toast, icon, flagIcon, plural, $, sheet } from './ui.
 import * as M from './model.js';
 import { boxRow, tile, needsLabel, dot, marked } from './common.js';
 import { example } from './example.js';
+import { sampleLabel } from './labels.js';
 import { sheet as sheetOf, perSheet } from './sheets.js';
 
 let filter = 'all';
@@ -178,6 +179,10 @@ function welcome() {
           <button class="btn" data-act="example">Look around an example move</button>
         </div>
       </section>
+      <figure class="sample">
+        <div class="boxside">${sampleLabel()}</div>
+        <figcaption>Point a phone at the code: it shows what’s in Box 12 and where it goes.</figcaption>
+      </figure>
       <ol class="how">
         <li><span class="tile small" data-digits="1"><b>1</b></span><span><b>Pack.</b> Each box gets the next number. Pick the room it’s leaving and the one it’s going to, list what’s in it, and tick Fragile, Heavy, Open first or Goes in the car. The sofa gets a number too.</span></li>
         <li><span class="tile small" data-digits="1"><b>2</b></span><span><b>Label.</b> Print on Avery 5164, 5168 or 5126 label sheets, or plain paper with cut lines. Point any phone at the code and it shows what’s inside. Colour signs for the doors at the new place.</span></li>

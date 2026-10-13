@@ -6,7 +6,7 @@ import { room } from './model.js';
 import { styleOf, shapeSVG } from './rooms.js';
 import { esc, flagIcon, upMark } from './ui.js';
 import { qrSVG } from './qr.js';
-import { boxLink } from './payload.js';
+import { boxLink, readBoxFragment, base } from './payload.js';
 import { slots, pages } from './sheets.js';
 
 // A room as a label draws it: its name, colour and shape.
@@ -117,6 +117,12 @@ export function label(d, { w = 4, h = 10 / 3, qr = true, edge = false } = {}) {
         ? `<ul class="lab-items">${shown.map(t => `<li>${esc(t)}</li>`).join('')}${left ? `<li><em>+ ${left} more</em></li>` : ''}</ul>`
         : `<p class="lab-items">${shown.map(esc).join('<i> · </i>')}${left ? `<em>${shown.length ? ` + ${left} more` : `${left} things`}</em>` : ''}</p>`}
     </article>`;
+}
+
+// The label on the welcome screen: the kettle's box. Its code works too, and shows what a mover's phone would.
+export function sampleLabel() {
+  const frag = 'b/demo/12/fo/00/Kitchen//1/Kettle~Mugs~Coffee~French+press~Tea+towels';
+  return onScreen(fromLink(readBoxFragment(frag), base() + '#' + frag));
 }
 
 // A label on the screen, scaled to fit its frame, stuck on a bit of cardboard.
