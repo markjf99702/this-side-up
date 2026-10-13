@@ -13,12 +13,13 @@ let celebrated = { load: false, unload: false };
 const WORDS = {
   load: { verb: 'On', done: 'on the truck', missing: 'Still to load', side: 'from', place: 'Leaving' },
   unload: { verb: 'Off', done: 'off the truck', missing: 'Still to come off', side: 'to', place: 'Going to' },
+  unpack: { verb: 'Done', done: 'unpacked', missing: 'Still packed', side: 'to', place: 'Going to' },
 };
 
 export function truck(stage) {
   if (!store.list) return go('/', true);
   if (stage) { store.prefs.stage = stage; store.savePrefs(); }
-  stage = store.prefs.stage === 'unload' ? 'unload' : 'load';
+  stage = ['load', 'unload', 'unpack'].includes(store.prefs.stage) ? store.prefs.stage : 'load';
   const list = store.list;
   typed = '';
 
@@ -26,9 +27,10 @@ export function truck(stage) {
     <div class="truck-screen" data-stage="${stage}">
       <div class="truck-head">
         <h1>Moving day</h1>
-        <nav class="seg" aria-label="Which end">
+        <nav class="seg" aria-label="Which part of the day">
           <a href="#/truck/load" aria-current="${stage === 'load' ? 'page' : 'false'}">Loading</a>
           <a href="#/truck/unload" aria-current="${stage === 'unload' ? 'page' : 'false'}">Unloading</a>
+          <a href="#/truck/unpack" aria-current="${stage === 'unpack' ? 'page' : 'false'}">Unpacking</a>
         </nav>
       </div>
       <section class="truck-card" id="truckCard"></section>
@@ -53,6 +55,7 @@ export function truck(stage) {
   showLast();
 
   const press = key => {
+    if (key !== 'tick') buzz(8);
     if (key === 'back') typed = typed.slice(0, -1);
     else if (key === 'tick') return tick();
     else if (/^\d$/.test(key) && typed.length < 4) typed = (typed + key).replace(/^0+(?=\d)/, '');
@@ -149,14 +152,16 @@ export function truck(stage) {
     const card = $('#truckCard');
     const word = stage === 'load'
       ? `<b>${truckBoxes.filter(b => b.loaded).length}</b> of ${truckBoxes.length} on the truck${car.length ? `<small>${car.filter(b => b.loaded).length} of ${car.length} in the car</small>` : ''}`
-      : `<b>${doneN}</b> of ${all.length} off the truck${car.length ? `<small>counting the ${car.length} in the car</small>` : ''}`;
+      : stage === 'unload'
+        ? `<b>${doneN}</b> of ${all.length} off the truck${car.length ? `<small>counting the ${car.length} in the car</small>` : ''}`
+        : `<b>${doneN}</b> of ${all.length} unpacked`;
     card.className = `truck-card${finished ? ' finished' : ''}`;
     card.innerHTML = `
-      <div class="truck-art">${truckSVG(stage, stage === 'load' ? truckBoxes.filter(b => b.loaded).length : all.length - doneN, stage === 'load' ? truckBoxes.length : all.length, animate)}</div>
+      <div class="truck-art">${stage === 'unpack' ? pileSVG(all.length - doneN, all.length, animate) : truckSVG(stage, stage === 'load' ? truckBoxes.filter(b => b.loaded).length : all.length - doneN, stage === 'load' ? truckBoxes.length : all.length, animate)}</div>
       <p class="truck-count">${finished ? finishedLine(list, stage, all) : word}</p>`;
     // Room by room: the rooms being emptied while loading, the rooms being filled at the other end.
     $('#roomsCard').innerHTML = prog.length ? `
-      <h2>${stage === 'load' ? 'Room by room, at the old place' : 'Room by room, at the new place'}</h2>
+      <h2>${stage === 'load' ? 'Room by room, at the old place' : stage === 'unload' ? 'Room by room, at the new place' : 'Room by room'}</h2>
       <ul class="rooms-prog">${prog.map(p => `<li class="${p.done === p.total ? 'full' : ''}">${p.room ? dot(p.room) : ''}<span>${esc(p.room?.name || 'No room')}</span><b>${p.done}/${p.total}</b><i style="--p:${p.total ? p.done / p.total : 0}"></i></li>`).join('')}</ul>` : '';
     $('#roomsCard').hidden = !prog.length;
     if (finished && animate && !celebrated[stage]) {
@@ -214,13 +219,13 @@ function boxCard(box, list, stage, ticked, typed = '') {
     <div class="rd-box${ticked ? ' ticked' : ''}" style="${st ? `--rc:${st.hex};--ri:${st.ink}` : ''}">
       <span class="rd-n">${box.n}</span>
       <span class="rd-what">
-        ${stage === 'unload'
-          ? `<span class="rd-to">${st ? `<span class="rd-shape">${shapeSVG(st.shape)}</span>` : ''}<span><small>${ticked ? 'Take it to the' : 'Goes to the'}</small><b>${esc(to?.name || 'No room')}</b></span></span>`
+        ${stage !== 'load'
+          ? `<span class="rd-to">${st ? `<span class="rd-shape">${shapeSVG(st.shape)}</span>` : ''}<span><small>${stage === 'unpack' ? 'In the' : ticked ? 'Take it to the' : 'Goes to the'}</small><b>${esc(to?.name || 'No room')}</b></span></span>`
           : `<span class="rd-to plain"><span><small>${box.car ? 'Goes in the car, not the truck' : where ? 'From the' : ''}</small><b>${esc(box.kind === 'piece' ? box.items[0] || 'Furniture' : where?.name || 'Box ' + box.n)}</b></span></span>`}
         <span class="rd-things">${esc((box.kind === 'piece' ? box.items.slice(1) : box.items).slice(0, 4).join(' · '))}</span>
         ${flags.length ? `<span class="rd-flags">${flags.map(f => `<span class="rd-flag f-${f}">${flagIcon(f)}${M.flagWords[f]}</span>`).join('')}</span>` : ''}
       </span>
-      ${ticked ? `<span class="rd-tick">${icon('check')}</span>` : M.done(box, stage) ? `<span class="rd-already">Already ${stage === 'load' ? 'on' : 'off'}</span>` : ''}
+      ${ticked ? `<span class="rd-tick">${icon('check')}</span>` : M.done(box, stage) ? `<span class="rd-already">Already ${stage === 'load' ? 'on' : stage === 'unload' ? 'off' : 'unpacked'}</span>` : ''}
     </div>`;
 }
 
@@ -230,9 +235,27 @@ function finishedLine(list, stage, all) {
     const car = all.filter(b => b.car).length;
     return `<b>Everything’s loaded.</b><small>${plural(all.length - car, 'thing')} on the truck${car ? `, ${car} in the car` : ''}. Close the doors.</small>`;
   }
+  if (stage === 'unpack') return `<b>Everything’s unpacked.</b><small>Welcome home.</small>`;
   return pieces
     ? `<b>All ${all.length} made it.</b><small>${plural(boxes, 'box', 'boxes')} and ${plural(pieces, 'piece')} of furniture.</small>`
     : `<b>All ${boxes} boxes made it.</b>`;
+}
+
+// Unpacking: the pile of boxes in the new place, getting smaller.
+function pileSVG(left, total, animate) {
+  const shown = total ? (left === 0 ? 0 : Math.max(1, Math.round(left / total * 10))) : 0;
+  const spots = [];
+  // A stack, bottom row first: 4, 3, 2, 1.
+  for (let row = 0; row < 4; row++) {
+    for (let c = 0; c < 4 - row; c++) spots.push([91 + row * 18.5 + c * 37, 102 - row * 32]);
+  }
+  const boxes = spots.slice(0, shown).map(([x, y]) => `<g class="tb"><rect x="${x}" y="${y}" width="36" height="32" rx="2"/><path d="M${x + 13} ${y}v32"/></g>`).join('');
+  return `
+    <svg class="truck pile${animate ? ' fresh' : ''}" viewBox="0 0 330 150" role="img" aria-label="${left} of ${total} still packed">
+      <g class="tr-boxes">${boxes}</g>
+      ${left === 0 ? `<g class="home"><path d="M140 96 165 72l25 24v40h-50z" fill="#f4efe6" stroke="#2a2017" stroke-width="3" stroke-linejoin="round"/><path d="M158 136v-18h14v18" fill="#c39a6b" stroke="#2a2017" stroke-width="3"/><path d="M165 89c-3-4-9-2-8 3 1 3 8 7 8 7s7-4 8-7c1-5-5-7-8-3z" fill="#e2523a"/></g>` : ''}
+      <path class="tr-road" d="M60 136h210"/>
+    </svg>`;
 }
 
 function missingSheet(list, stage, after) {
@@ -240,7 +263,7 @@ function missingSheet(list, stage, after) {
   const total = groups.reduce((a, g) => a + g.boxes.length, 0);
   sheet(`
     <h2>${WORDS[stage].missing}: ${total}</h2>
-    <p>${stage === 'load' ? 'By the room it’s leaving, so you know where to look.' : 'By the room it’s going to.'} Tick one here if it turned up some other way.</p>
+    <p>${stage === 'load' ? 'By the room it’s leaving, so you know where to look.' : 'By the room it’s going to.'} ${stage === 'unpack' ? 'Tick one here when it’s empty.' : 'Tick one here if it turned up some other way.'}</p>
     <div class="missing">
       ${groups.map(g => `
         <h3>${g.room ? dot(g.room) : ''}${esc(g.room?.name || 'No room')} <small>${g.boxes.length}</small></h3>
@@ -265,7 +288,7 @@ function resetSheet(list, stage, after) {
   if (!n) { toast('Nothing’s ticked yet.'); return; }
   sheet(`
     <h2>Start the count again?</h2>
-    <p>This unticks all ${n} ${stage === 'load' ? 'loaded' : 'unloaded'} boxes, for a fresh count. The boxes and everything else stay as they are.</p>
+    <p>This unticks all ${n} ${stage === 'load' ? 'loaded' : stage === 'unload' ? 'unloaded' : 'unpacked'} boxes, for a fresh count. The boxes and everything else stay as they are.</p>
     <div class="row"><button class="btn" data-close>Keep the count</button><button class="btn primary" id="sheetGo">Untick ${n}</button></div>`, (body, close) => {
     body.querySelector('#sheetGo').onclick = () => {
       const now = Date.now();

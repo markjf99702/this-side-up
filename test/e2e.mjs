@@ -118,6 +118,13 @@ assert.equal(await page.isDisabled('#save'), true);
 await page.click('[data-act="nextfree"]');
 assert.equal(await page.inputValue('#num'), '6');
 assert.equal(await page.isDisabled('#save'), false);
+// Furniture with notes and no name is just "Furniture": a note never becomes its name.
+await page.click('[data-kind="piece"]');
+await page.fill('#things', 'Legs in Box 3');
+await page.locator('#preview .lab-piece:text-is("Furniture")').waitFor();
+await page.click('[data-kind="box"]');
+assert.equal(await page.inputValue('#things'), 'Legs in Box 3', 'and back to a box, the notes are what’s in it');
+await page.fill('#things', '');
 
 // ---------- Finding the kettle ----------
 step('search');
@@ -183,6 +190,20 @@ await fits(mover.page, 'a label read by a mover');
 // A Tag Along sticker on a phone without the list.
 await mover.page.goto(base + '#box/003');
 assert.match(await text(mover.page), /This phone doesn’t have the list/);
+
+// Things with slashes, tildes, percent signs and plus signs in them come through the code as they are.
+await page.goto(base + `#/box/${box1}/edit`);
+await page.fill('#things', 'Kettle\nMugs\nTea ~ 50% off\nA/V cables + adapters\nMark’s mug');
+await page.click('#save');
+await page.waitForURL(new RegExp(`#/box/${box1}$`));
+const awkward = (await qrIn(page.locator('.boxside .lab-qr')))[0].text;
+await mover.page.goto(awkward);
+await mover.page.locator('.scanned').waitFor();
+assert.deepEqual(await mover.page.locator('.scanned .things-list li').allInnerTexts(), ['Kettle', 'Mugs', 'Tea ~ 50% off', 'A/V cables + adapters', 'Mark\'s mug']);
+await page.goto(base + `#/box/${box1}/edit`);
+await page.fill('#things', 'Kettle\nMugs\nCoffee\nFrench press');
+await page.click('#save');
+await page.waitForURL(new RegExp(`#/box/${box1}$`));
 
 // Mark's phone opens the same link as the box in his list; so does a sticker.
 await page.goto(labelLink);
@@ -251,6 +272,16 @@ await page.click('#save');
 await page.waitForURL(new RegExp(`#/box/${box1}$`));
 assert.match(await page.locator('.label-acts').innerText(), /Changed since its label was printed/);
 assert.equal(await page.locator('#printBadge').innerText(), '1');
+// Its own Print button prints just that label.
+await page.click('.label-acts a:has-text("Print this label")');
+await page.waitForURL(/#\/print\/box\//);
+assert.match(await page.locator('#controls').innerText(), /Just Box 1/);
+assert.equal(await page.locator('#preview .slot .lab').count(), 1);
+await page.click('[data-act="print"]');
+await toastSays(page, /1 label marked as printed/);
+assert.equal(await page.isHidden('#printBadge'), true);
+await page.goto(base + '#/print');
+assert.doesNotMatch(await page.locator('#controls').innerText(), /Just Box/, 'the next visit is back to every box');
 
 // Door signs and the test sheet.
 step('door signs and test sheet');
@@ -316,13 +347,23 @@ await page.click('.sheet [data-close]');
 await page.locator('.truck-card.finished').waitFor();
 assert.match(await page.locator('.truck-count').innerText(), /All 5 made it/);
 
-// Unpacking, after.
+// Unpacking, after: on the box itself, or on the same pad.
 await page.goto(base + `#/box/${box1}`);
 await page.click('[data-stage="unpack"]');
 await page.locator('[data-stage="unpack"][aria-pressed="true"]').waitFor();
+await page.click('.tabs a[data-tab="truck"]');
+await page.click('.truck-head a:has-text("Unpacking")');
+await page.waitForURL(/unpack$/);
+assert.match(await page.locator('.truck-count').innerText(), /1 of 5 unpacked/);
+await keyIn(1);
+await key('tick');
+assert.match(await page.locator('#readout').innerText(), /already unpacked/);
+await keyIn(2);
+await key('tick');
+assert.match(await page.locator('#last').innerText(), /Box 2 unpacked/);
 await page.goto(base + '#/');
 await page.click('[data-filter="packed"]');
-assert.equal(await page.locator('.boxrow').count(), 4, 'four still packed');
+assert.equal(await page.locator('.boxrow').count(), 3, 'three still packed');
 await page.click('[data-filter="all"]');
 
 // ---------- The first night ----------
