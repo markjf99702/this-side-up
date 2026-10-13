@@ -741,11 +741,11 @@ body.bare { padding-bottom: 0; }
 .row-link .go { color: var(--muted); }
 .row-link:hover { box-shadow: var(--shadow), 0 0 0 2px rgba(34, 26, 18, .14); }
 .stack { display: grid; gap: 8px; margin-top: 12px; }
-.stack .btn { justify-content: flex-start; }
-.stack .btn small { font-weight: 500; color: var(--muted); }
-.mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: .86rem; }
-.copy-row { flex-wrap: nowrap; margin-top: 10px; }
-.copy-row .input { min-width: 0; }
+.stack .btn { justify-content: flex-start; text-align: left; border-radius: 16px; padding: 10px 16px; }
+.stack .btn > span { display: grid; }
+.stack .btn small { font-weight: 500; color: var(--muted); font-size: .84rem; }
+.copy-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.link-text { flex: 1 1 auto; min-width: 0; padding: 9px 12px; border-radius: 10px; background: var(--paper-2); font: 600 .86rem/1.4 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; overflow-wrap: anywhere; user-select: all; }
 .arrive h2 { font-size: 1.3rem; margin-bottom: 10px; }
 .merge-sum { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0 0 10px; }
 .merge-sum li { padding: 6px 12px; border-radius: 8px; background: var(--paper-2); font-weight: 600; }

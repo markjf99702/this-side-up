@@ -26,17 +26,17 @@ export function more() {
         <h2>On another phone</h2>
         <p>The list lives on this phone. Send it to another one as a link, or save a backup file, and open it there. When both phones have changed things, send it again: the two lists are merged box by box.</p>
         <div class="stack">
-          <button class="btn wide" data-act="send"${n ? '' : ' disabled'}>${icon('share')} Send the list as a link</button>
-          ${framed() ? '' : `<button class="btn wide" data-act="backup"${n ? '' : ' disabled'}>${icon('file')} Save a backup file <small>with the photos</small></button>`}
-          <label class="btn wide">${icon('file')} Open a backup file<input type="file" id="fileIn" accept=".json,application/json" class="sr"></label>
-          ${framed() ? '' : `<button class="btn wide" data-act="csv"${n ? '' : ' disabled'}>${icon('file')} Spreadsheet (CSV) <small>for the movers or the insurance</small></button>`}
+          <button class="btn wide" data-act="send"${n ? '' : ' disabled'}>${icon('share')}<span>Send the list as a link</span></button>
+          ${framed() ? '' : `<button class="btn wide" data-act="backup"${n ? '' : ' disabled'}>${icon('file')}<span>Save a backup file<small>with the photos</small></span></button>`}
+          <label class="btn wide">${icon('file')}<span>Open a backup file<small>from this phone or another</small></span><input type="file" id="fileIn" accept=".json,application/json" class="sr"></label>
+          ${framed() ? '' : `<button class="btn wide" data-act="csv"${n ? '' : ' disabled'}>${icon('file')}<span>Spreadsheet (CSV)<small>for the movers or the insurance</small></span></button>`}
         </div>
       </section>
 
       <section class="card">
         <h2>NFC stickers</h2>
         <p>With <a href="https://junkdrawer.works/tag-along/">Tag Along</a> on an Android phone, set its link to this and its next number to your first box, then hold a sticker to each box. Tapping a sticker later opens that box here.</p>
-        <div class="row copy-row"><input class="input grow mono" id="tagLink" value="${esc(tag)}" readonly aria-label="Link for Tag Along"><button class="btn" data-act="copytag">Copy</button></div>
+        <div class="copy-row"><code class="link-text" id="tagLink">${esc(tag)}</code><button class="btn small" data-act="copytag">Copy</button></div>
       </section>
 
       <section class="card">

@@ -62,8 +62,8 @@ export async function copy(text, field, done = 'Copied') {
     toast(done);
   } catch {
     // Some browsers and embedded views refuse the clipboard: select the text so it can be copied by hand.
-    field?.focus();
-    field?.select();
+    if (field && 'select' in field) { field.focus(); field.select(); }
+    else if (field) getSelection()?.selectAllChildren(field);
     let ok = false;
     try { ok = document.execCommand('copy'); } catch { /* not allowed here either */ }
     toast(ok ? done : 'It’s selected. Copy it from there.');
