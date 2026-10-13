@@ -14,8 +14,6 @@ let which = 'new';     // 'new' (not printed or changed), 'all' or 'pick'
 let signRooms = null;  // room ids ticked for door signs
 let kind = 'labels';   // what Print will print: 'labels', 'signs' or 'test'
 
-export const printOnly = uids => { only = uids; };
-
 const defaultPaper = () => (/^(en-us|en-ca|es-mx|en-ph|fil)/i.test(navigator.language || '') ? 'letter' : 'a4');
 const paper = () => store.prefs.paper || defaultPaper();
 const nudgeFor = s => ({ x: 0, y: 0, ...(store.prefs.nudge?.[s.id] || {}) });
@@ -29,9 +27,11 @@ function chosen(list) {
   return all.filter(b => needsLabel(b, list));
 }
 
-export function printScreen(what = 'labels') {
+// what: 'labels', 'signs' or 'test'. uid: just that box's label (from its own Print button).
+export function printScreen(what = 'labels', uid = null) {
   if (!store.list) { store.list = M.newList(); store.save(); }
   kind = what === 'signs' ? 'signs' : what === 'test' ? 'test' : 'labels';
+  only = uid && M.byUid(store.list, uid) ? [uid] : null;
   app.innerHTML = `
     <div class="printing-screen">
       <div class="screen-head"><div><p class="kicker kraft">Print</p><h1>${kind === 'signs' ? 'Door signs' : kind === 'test' ? 'Test sheet' : 'Box labels'}</h1></div></div>

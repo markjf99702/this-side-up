@@ -6,7 +6,6 @@ import * as M from './model.js';
 import { shapeSVG } from './rooms.js';
 import { dot, tile, needsLabel, stageNote, shapeName } from './common.js';
 import { onScreen, fromBox, fromLink } from './labels.js';
-import { printOnly } from './print.js';
 
 // ---------- Photos ----------
 
@@ -83,7 +82,7 @@ export function boxScreen(uid) {
         <div class="box-label">
           <div class="boxside">${onScreen(fromBox(box, list))}</div>
           <div class="row label-acts">
-            <a class="btn small" href="#/print" data-act="printone">${icon('print')} Print this label</a>
+            <a class="btn small" href="#/print/box/${box.uid}">${icon('print')} Print this label</a>
             <span class="hint">${box.printed ? (stale ? '<b class="warn-text">Changed since its label was printed</b>' : `Label printed ${when(box.printed)}`) : 'Label not printed yet'}</span>
           </div>
         </div>
@@ -147,7 +146,6 @@ export function boxScreen(uid) {
         return;
       }
       const act = t.dataset.act;
-      if (act === 'printone') { printOnly([box.uid]); return; }
       if (act === 'renumber') {
         box.n = M.nextNumber(list);
         M.putBox(list, box);
