@@ -104,6 +104,8 @@ await page.click('[data-flag="first"]');
 await page.locator('#preview .lab-room-name:text-is("Kitchen")').waitFor();
 await page.locator('#preview .lab-fragile').waitFor({ timeout: 3000 }); // the label shows FRAGILE as you tick it
 assert.equal(await page.locator('#preview .lab-num').innerText(), '1');
+assert.equal(await page.locator('#packForm .pack-form #labelSlot #preview').count(), 1, 'on a phone the label sits in the form, above what’s in the box');
+assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('#preview .lab-num')).color), 'rgb(17, 17, 17)', 'in its own black ink');
 await fits(page, 'the packing form');
 await page.click('#save');
 await savedSays(page, /Box 1 saved/);
