@@ -14,8 +14,11 @@ export function qrMatrix(text) {
 
 const attr = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
-// One path, with each run of dark squares in a row drawn as one rectangle (smaller, and no hairline seams).
-export function qrSVG(text, { label = 'QR code', quiet = 4, cls = 'qr' } = {}) {
+// Making a code takes a few milliseconds (it tries eight masks), and a move can have hundreds: keep the paths.
+const paths = new Map();
+function pathFor(text, quiet) {
+  const key = quiet + '|' + text;
+  if (paths.has(key)) return paths.get(key);
   const m = qrMatrix(text);
   let d = '';
   for (let r = 0; r < m.n; r++) {
@@ -27,6 +30,16 @@ export function qrSVG(text, { label = 'QR code', quiet = 4, cls = 'qr' } = {}) {
       c += run - 1;
     }
   }
+  const out = { d, n: m.n, version: m.version };
+  if (paths.size > 2000) paths.clear();
+  paths.set(key, out);
+  return out;
+}
+
+// One path, with each run of dark squares in a row drawn as one rectangle (smaller, and no hairline seams).
+export function qrSVG(text, { label = 'QR code', quiet = 4, cls = 'qr' } = {}) {
+  const m = pathFor(text, quiet);
+  const d = m.d;
   const size = m.n + quiet * 2;
   return `<svg class="${attr(cls)}" viewBox="0 0 ${size} ${size}" role="img" aria-label="${attr(label)}" shape-rendering="crispEdges" data-version="${m.version}"><rect width="${size}" height="${size}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
 }

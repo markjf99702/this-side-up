@@ -801,6 +801,7 @@ button.dot { border: 0; padding: 0; background: none; cursor: pointer; }
 .slot { position: absolute; left: calc(var(--x) * var(--u)); top: calc(var(--y) * var(--u)); width: calc(var(--w) * var(--u)); height: calc(var(--h) * var(--u)); border-radius: calc(var(--r) * var(--u)); overflow: hidden; }
 .preview .slot { box-shadow: 0 0 0 1px #ddd5c8; }
 .preview .slot.empty { background: repeating-linear-gradient(-45deg, #f6f2ec 0 6px, #fff 0 12px); }
+.more-sheets { margin: 0; text-align: center; color: var(--kraft-ink); font-weight: 650; }
 .cuts { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .cuts line { stroke: #8f877b; stroke-width: .012; stroke-dasharray: .09 .07; }
 .page.test .slot.outline { border: calc(var(--u) * .014) solid #222; color: #b9b1a5; padding: calc(var(--u) * .14) calc(var(--u) * .18); }

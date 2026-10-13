@@ -124,10 +124,10 @@ export const onScreen = (d, size = [4, 10 / 3]) => `
   <div class="lab-frame" style="--lw:${size[0]}"><div class="lab-stuck">${label(d, { w: size[0], h: size[1] })}</div></div>`;
 
 // Pages of labels for a sheet, with labels before `start` left blank. Each item of `ds` is a fromBox().
-export function labelPages(ds, s, { start = 0, nudge = { x: 0, y: 0 }, outline = false } = {}) {
+export function labelPages(ds, s, { start = 0, nudge = { x: 0, y: 0 }, outline = false, limit = Infinity } = {}) {
   const u = s.unit;
   const [pw, ph] = s.page.map(v => inches(v, u));
-  return pages(s, ds.length, start).map(page => `
+  return pages(s, ds.length, start).slice(0, limit).map(page => `
     <section class="page${s.cut ? ' cut' : ''}" style="--pw:${pw};--ph:${ph}">
       ${page.map(({ slot, i }) => {
         const x = inches(slot.x + (nudge.x || 0), u), y = inches(slot.y + (nudge.y || 0), u);

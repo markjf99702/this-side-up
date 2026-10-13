@@ -102,7 +102,10 @@ function labels() {
       ${howToPrint()}
       ${nudger(s, nudge)}
     </section>`;
-  $('#preview').innerHTML = labelPages(boxes.map(b => fromBox(b, list)), s, { start, nudge, outline: true });
+  // The preview shows the first few sheets; the printer gets them all.
+  const SHOW = 3;
+  $('#preview').innerHTML = labelPages(boxes.map(b => fromBox(b, list)), s, { start, nudge, outline: true, limit: SHOW })
+    + (pageCount > SHOW ? `<p class="more-sheets">and ${plural(pageCount - SHOW, 'more sheet')} like ${pageCount - SHOW === 1 ? 'it' : 'these'}</p>` : '');
   fitPreview();
 
   on({
