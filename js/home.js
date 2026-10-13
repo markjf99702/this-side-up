@@ -5,7 +5,7 @@ import * as M from './model.js';
 import { boxRow, tile, needsLabel, dot, marked } from './common.js';
 import { example } from './example.js';
 import { sampleLabel } from './labels.js';
-import { sheet as sheetOf, perSheet } from './sheets.js';
+import { sheet as sheetOf, perSheet, pages } from './sheets.js';
 
 let filter = 'all';
 let query = '';
@@ -31,7 +31,10 @@ export function home() {
   if (!list) return welcome();
   const t = M.tally(list);
   const toPrint = M.live(list).filter(b => needsLabel(b, list)).length;
-  const per = perSheet(sheetOf(store.prefs.sheet));
+  // How many sheets they'd take, starting where the last sheet was left.
+  const labelSheet = sheetOf(store.prefs.sheet);
+  const per = perSheet(labelSheet);
+  const sheets = pages(labelSheet, toPrint, store.prefs.start?.[labelSheet.id] || 0).length;
   const clashes = M.clashes(list);
   const showPacked = t.arrived > 0;
   if (!showPacked && filter === 'packed') filter = 'all';
@@ -96,7 +99,7 @@ export function home() {
           ${t.arrived ? `<span>${icon('check', 'icon xs')}<b>${t.unpacked}</b> of ${t.all} unpacked</span>` : ''}
         </div>
         ${toPrint || firstBoxes.length ? '<div class="nudges">' : ''}
-        ${toPrint ? `<a class="nudge" href="#/print">${icon('print')}<span><b>${plural(toPrint, 'label')} to print</b>${toPrint >= per ? ` · that’s a sheet of ${per}` : ''}</span>${icon('arrow', 'icon go')}</a>` : ''}
+        ${toPrint ? `<a class="nudge" href="#/print">${icon('print')}<span><b>${plural(toPrint, 'label')} to print</b>${toPrint >= per ? ` · ${sheets === 1 ? 'a full sheet' : `${sheets} sheets`}` : ''}</span>${icon('arrow', 'icon go')}</a>` : ''}
         ${firstBoxes.length ? `<a class="nudge first" href="#/first">${flagIcon('first')}<span><b>The first night</b> · ${plural(firstBoxes.length, 'box', 'boxes')} to open first</span>${icon('arrow', 'icon go')}</a>` : ''}
         ${toPrint || firstBoxes.length ? '</div>' : ''}
         <div class="filters" role="group" aria-label="Show">
