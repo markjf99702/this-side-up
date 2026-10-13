@@ -6,6 +6,7 @@ import * as M from '../js/model.js';
 import { nextStyle, COLOURS, SHAPES } from '../js/rooms.js';
 import { boxFragment, boxLink, readBoxFragment, readNumber, enc, dec, QR_BYTES, SITE, pack, unpack, listLink, readList, base } from '../js/payload.js';
 import { SHEETS, slots, pages, perSheet, fmt } from '../js/sheets.js';
+import { layout, label } from '../js/labels.js';
 
 const T0 = 1_760_000_000_000;
 
@@ -283,6 +284,36 @@ test('label sheets fit on their paper', () => {
   const last = slots(s5164)[5];
   assert.ok(Math.abs(last.x + last.w - (8.5 - 0.15625)) < 1e-9, '5164: the same margin on the right as the left');
   assert.ok(Math.abs(last.y + last.h - (11 - 0.5)) < 1e-9, '5164: half an inch at the bottom');
+});
+
+test('every label makes room: flags on one row where they fit, the list gets the lines that are left', () => {
+  const kitchen = { name: 'Kitchen', hex: '#e69f00', ink: '#1f1500', shape: 0 };
+  const six = ['Kettle', 'Mugs', 'Coffee', 'French press', 'Tea towels', 'The good knives'];
+  const box = f => ({ n: 12, kind: 'box', items: six, more: 0, to: kitchen, from: 'Kitchen', fragile: false, heavy: false, first: false, car: false, ...f });
+  for (const s of SHEETS) {
+    const inch = v => (s.unit === 'mm' ? v / 25.4 : v);
+    const size = { w: inch(s.label[0]), h: inch(s.label[1]), edge: !!s.edge };
+    // Mark's Box 1: Fragile and Open first, six things.
+    const one = layout(box({ fragile: true, first: true }), size);
+    assert.equal(one.rows, 1, `${s.id}: two flags, one row`);
+    assert.ok(one.lines >= 1, `${s.id}: and room to say what's inside (${one.lines} lines)`);
+    // Three flags and the room it's leaving still keep to one row of flags.
+    const three = layout(box({ fragile: true, first: true, car: true, from: 'Living room' }), size);
+    assert.equal(three.rows, 1, `${s.id}: three flags, one row`);
+    // Nothing listed past what fits: a label's list is never taller than its lines.
+    const html = label(box({ fragile: true, first: true, car: true, heavy: true, from: 'Primary bedroom' }), size);
+    assert.match(html, /--lines:\d+;/);
+  }
+  // A half sheet never puts a second row of flags where the number and the code need the room.
+  const half = SHEETS.find(s => s.id === '5126');
+  assert.equal(layout(box({ fragile: true, first: true, heavy: true, car: true, from: 'Primary bedroom' }), { w: half.label[0], h: half.label[1], edge: true }).rows, 1);
+});
+
+test('a long first thing is cut at a word, so the label can still say how many more', () => {
+  const d = { n: 3, kind: 'box', items: ['LEGO sets: Bonsai Tree, Tree House, the big castle and the instructions for all of them', 'Mugs'], more: 0, to: null, from: '', first: true };
+  const html = label(d, { w: 3.5, h: 5 });
+  assert.match(html, /LEGO sets: Bonsai Tree, Tree House[^<]*…/);
+  assert.match(html, /\+ 1 more/);
 });
 
 test('pages start at a label part-way down a used sheet', () => {

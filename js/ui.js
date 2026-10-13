@@ -1,7 +1,9 @@
 // Small pieces every screen uses: escaping, the toast, the sheet that slides up, copying, sharing and
 // downloading, and one set of event handlers for whichever screen is showing.
 
-export const app = document.getElementById('app');
+// No page (the unit tests import the labels): the helpers still work, with nothing to listen to.
+const page = typeof document !== 'undefined';
+export const app = page ? document.getElementById('app') : null;
 
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 export const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
@@ -18,7 +20,7 @@ export function go(path, replace = false) {
 let handlers = {};
 export function on(h) { handlers = h; }
 for (const type of ['click', 'input', 'change', 'keydown', 'submit', 'focusout', 'pointerdown']) {
-  app.addEventListener(type, e => handlers[type]?.(e));
+  app?.addEventListener(type, e => handlers[type]?.(e));
 }
 
 let toastTimer;
@@ -44,7 +46,7 @@ export function sheet(html, bind) {
   bind?.(body, close);
   return close;
 }
-{
+if (page) {
   const dlg = document.getElementById('sheet');
   // Tapping the dim area around the sheet closes it.
   dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });

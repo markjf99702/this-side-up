@@ -38,19 +38,6 @@ export function fromLink(p, link = '') {
   };
 }
 
-// A few words for the label, in order, until there's no room: the label shows what fits and says how many more.
-function shortList(items, more, budget) {
-  const out = [];
-  let used = 0;
-  for (const it of items) {
-    if (out.length && used + it.length > budget) break;
-    out.push(it);
-    used += it.length + 3;
-  }
-  const left = items.length - out.length + more;
-  return { shown: out, left };
-}
-
 const inches = (v, unit) => (unit === 'mm' ? v / 25.4 : v);
 
 // How wide a line of bold, condensed capitals is, in ems, measured with the real font in the page.
@@ -72,6 +59,24 @@ export function capsWidth(text, { weight = 860, stretch = '66%' } = {}) {
   return w;
 }
 
+// How wide a piece of a label is, in ems of its own font size, measured with the page's own fonts and styles.
+// Where there's no page (the tests) it's the same measurement, made once by hand.
+const own = new Map();
+function ownWidth(key, html, fallback) {
+  if (own.has(key)) return own.get(key);
+  if (typeof document === 'undefined' || !document.body) return fallback;
+  const host = document.createElement('div');
+  host.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:nowrap;font-size:100px';
+  host.innerHTML = html;
+  document.body.append(host);
+  const el = host.firstElementChild;
+  const w = el.offsetWidth / parseFloat(getComputedStyle(el).fontSize);
+  host.remove();
+  if (!(w > 0)) return fallback;
+  if (document.fonts && document.fonts.status === 'loaded') own.set(key, w);
+  return w;
+}
+
 // The room's name as big as the band takes: up to 4.1em on one line, or two lines for a long name.
 function fitBand(name, space) {
   const one = space / capsWidth(name);
@@ -87,35 +92,165 @@ function fitBand(name, space) {
   return two > one ? { size: two, lines: best.lines } : { size: Math.max(2.2, one), lines: [name] };
 }
 
+// ---------- Fitting it all on ----------
+// Everything on a label is sized in ems of the label's own font size, and the label's height is fixed, so what
+// fits is arithmetic: the room band, the number, the flags and the code each take a known height, and the list of
+// what's inside gets the lines that are left. Nothing runs into the code, so it always scans. The flags shrink to
+// stay on one row where they can. These numbers are the label's CSS (css/app.css, "The label"): change both.
+const ROOM_H = 6.2;
+const QR = 15, QR_GAP = 0.9;
+const FLAG_H = 2.19;                 // a flag's height in its own ems (the FRAGILE stamp is the tallest)
+const FLAGS_GAP = 0.9, ROW_GAP = 0.5, FLAG_GAP = 0.6;
+const FROM_FONT = 1.45, FROM_H = FROM_FONT * 1.15;
+const ITEM_FONT = 1.62, LINE = ITEM_FONT * 1.22, LIST_GAP = ITEM_FONT * 0.7;
+const XITEM_FONT = 1.75, XLINE = XITEM_FONT * 1.32, XLIST_GAP = XITEM_FONT * 1.1;
+// The number's size (1, 2, 3 or 4 digits), and a piece of furniture's, which leaves room for its name.
+const NUM_FONT = { tall: [17.5, 17.5, 14, 10.5], wide: [15, 15, 13.2, 10], xwide: [18.5, 15, 11.5, 9] };
+const PIECE_FONT = { tall: [10, 10, 10, 10], wide: [7, 7, 6.2, 4.9], xwide: [10, 10, 10, 10] };
+const PIECE_NAME = 3;
+const DIGIT = 0.49, KIND_W = 2.65;   // a stencilled digit's width in its own ems; the "BOX" beside the number
+const XNUM_MAX = 17, XQR = 15, XGAPS = 3.2, XLIST_PAD = 2.6; // a half sheet's columns
+
+const FLAG_ORDER = ['fragile', 'first', 'heavy', 'car'];
+const FLAG_TEXT = { fragile: 'Fragile', first: 'Open first', heavy: 'Heavy', car: 'Goes in the car', carShort: 'In the car' };
+const FLAG_WIDTH = { fragile: 6.93, first: 8.2, heavy: 5.9, car: 10.57, carShort: 7.88 }; // in their own ems
+const flagHTML = (f, short) => `<span class="lab-flag lab-${f}">${flagIcon(f)}${FLAG_TEXT[f === 'car' && short ? 'carShort' : f]}</span>`;
+const flagWidth = (f, short) => {
+  const k = f === 'car' && short ? 'carShort' : f;
+  return ownWidth('flag|' + k, flagHTML(f, short), FLAG_WIDTH[k]);
+};
+const fromWidth = text => ownWidth('from|' + text, `<span class="lab-from">from ${esc(text)}</span>`, (text.length + 5) * 0.56);
+
+// Flags into rows `room` ems wide: as big as they can be while they still fit on one row, with "In the car" for
+// "Goes in the car" if that's what it takes. Rows of the biggest size when even the smallest won't fit on one.
+function flagRows(fl, room, sizes, oneRow = false) {
+  const rowsAt = (ff, short) => {
+    const rows = [];
+    let x = 0;
+    for (const f of fl) {
+      const wd = flagWidth(f, short) * ff;
+      if (rows.length && x + FLAG_GAP + wd <= room * 0.98) { rows[rows.length - 1].push(f); x += FLAG_GAP + wd; } else { rows.push([f]); x = wd; }
+    }
+    return { ff, short, rows: rows.length, last: x };
+  };
+  for (const ff of sizes) {
+    for (const short of fl.includes('car') ? [false, true] : [false]) {
+      const r = rowsAt(ff, short);
+      if (r.rows <= 1 && r.last <= room * 0.98) return r;
+    }
+  }
+  return oneRow ? { ...rowsAt(sizes[sizes.length - 1], true), rows: 1 } : rowsAt(sizes[0], true);
+}
+
+// A few things for the label, in order, until there's no room: it shows what fits and says how many more.
+// A few characters a line go to words that wrap onto the next one.
+function shortList(items, more, lines, perLine) {
+  if (lines < 1) return { shown: [], left: 0 };
+  const cap = lines * (perLine - 4);
+  const all = items.reduce((a, t) => a + t.length + 3, -3);
+  if (!more && all <= cap) return { shown: items, left: 0 };
+  // Not everything fits, so keep room to say how many more (a first thing too long for the room is cut short).
+  const out = [];
+  let used = 0;
+  for (const it of items) {
+    const room = cap - used - 11;
+    if (out.length && it.length > room) break;
+    out.push(out.length ? it : cut(it, Math.max(8, room)));
+    used += out[out.length - 1].length + 3;
+  }
+  return { shown: out, left: items.length - out.length + more };
+}
+
+// A half sheet's list, a thing a line (or two, for a long one), and the last line saying how many more.
+function listFit(items, more, lines, perLine) {
+  const cost = t => Math.min(2, Math.max(1, Math.ceil(t.length / perLine)));
+  if (lines < 1) return { shown: [], left: 0 };
+  if (!more && items.reduce((a, t) => a + cost(t), 0) <= lines) return { shown: items, left: 0 };
+  const out = [];
+  let used = 0;
+  for (const it of items) {
+    if (used + cost(it) > lines - 1) break;
+    out.push(it);
+    used += cost(it);
+  }
+  return { shown: out, left: items.length - out.length + more };
+}
+
+// Words up to `n` characters, cut at a space where there's one, and an ellipsis.
+function cut(text, n) {
+  if (text.length <= n) return text;
+  const s = text.slice(0, n - 1);
+  const at = s.lastIndexOf(' ');
+  return (at > n / 2 ? s.slice(0, at) : s).replace(/[\s,;:·-]+$/, '') + '…';
+}
+
+// Where everything goes on a label `w` by `h` inches, and how much of the list fits.
+export function layout(d, { w = 4, h = 10 / 3, edge = false } = {}) {
+  const tall = h > w * 1.05;
+  const kind = tall ? 'tall' : w >= h * 1.4 ? 'xwide' : 'wide'; // a half sheet: the list gets a column of its own
+  const em = tall ? Math.min(w / 35, h / 50) : h / 33.3;      // inches to the em (the CSS says the same)
+  const W = w / em, H = h / em, pad = edge ? 0.25 / em : 1.15;
+  const cw = W - 2 * pad, ch = H - 2 * pad;
+  const piece = d.kind === 'piece';
+  const digits = String(d.n).length;
+  const size = (piece ? PIECE_FONT : NUM_FONT)[kind][Math.min(4, digits) - 1];
+  // The number, and under a piece of furniture, its name on one line or two.
+  const name = piece ? d.items[0] || 'Furniture' : '';
+  const nameLines = piece ? (capsWidth(name) * PIECE_NAME > cw - 0.5 ? 2 : 1) : 0;
+  const numH = 1 + size * 0.82 + (piece ? 0.2 * PIECE_NAME + nameLines * PIECE_NAME * 0.95 : 0);
+
+  const fl = FLAG_ORDER.filter(f => d[f]);
+  const from = d.from && (!d.to || d.from.trim().toLowerCase() !== d.to.name.trim().toLowerCase()) ? d.from : '';
+  const sizes = fl.length <= 2 ? [1.85, 1.65, 1.5] : [1.5, 1.35, 1.25];
+  const f = fl.length ? flagRows(fl, cw, kind === 'xwide' ? [...sizes, 1.1] : sizes, kind === 'xwide') : { ff: 1.85, short: false, rows: 0, last: 0 };
+  // Where it's coming from: beside the code on a tall label; on the others, at the end of the flags if it fits,
+  // or a row of its own (a line of the list, on a half sheet).
+  let fromAt = '';
+  if (from) {
+    const fw = fromWidth(from) * FROM_FONT;
+    if (tall) fromAt = 'foot';
+    else if (!fl.length || f.last + FLAG_GAP + fw <= cw * 0.98) fromAt = 'flags';
+    else fromAt = kind === 'xwide' ? 'list' : 'row';
+  }
+  const rowsH = f.rows ? f.rows * FLAG_H * f.ff + (f.rows - 1) * ROW_GAP : 0;
+  let flagsH = fromAt === 'flags' ? Math.max(rowsH, FROM_H) : rowsH;
+  if (fromAt === 'row') flagsH += ROW_GAP + FROM_H;
+  const block = flagsH ? flagsH + (kind === 'xwide' ? 1 : FLAGS_GAP) : 0;
+
+  let lines, perLine;
+  if (kind === 'xwide') {
+    lines = Math.max(0, Math.floor((ch - ROOM_H - block - XLIST_GAP + 0.3) / XLINE));
+    // The list's column is what the number (or the furniture's name) and the code leave.
+    const numW = Math.min(XNUM_MAX, Math.max(KIND_W + DIGIT * digits * size, piece ? capsWidth(name) * PIECE_NAME : 0));
+    perLine = Math.max(6, Math.floor((cw - XQR - XGAPS - numW - XLIST_PAD) / (XITEM_FONT * 0.56)));
+  } else {
+    const free = kind === 'tall' ? ch - ROOM_H - numH - block - QR - QR_GAP + 0.4 : ch - ROOM_H - QR - block + 0.5;
+    lines = Math.max(0, Math.floor((free - LIST_GAP) / LINE));
+    perLine = Math.floor(cw / (ITEM_FONT * 0.56));
+  }
+  return { kind, em, W, H, cw, ch, numH, nameLines, fl, ff: f.ff, short: f.short, rows: f.rows, from, fromAt, flagsH: block, lines, perLine };
+}
+
 // One label. `w` and `h` are its size in inches.
 export function label(d, { w = 4, h = 10 / 3, qr = true, edge = false } = {}) {
-  const tall = h > w * 1.05;
-  const xwide = w >= h * 1.4; // a half sheet: the list of what's in it gets a column of its own
+  const L = layout(d, { w, h, edge });
+  const tall = L.kind === 'tall', xwide = L.kind === 'xwide';
   const digits = String(d.n).length;
-  const band = d.to ? fitBand(d.to.name, (tall ? 21.3 : 33.3 * w / h - 11.4 - (edge ? 2 : 0)) - 0.3) : null;
+  const band = d.to ? fitBand(d.to.name, (tall ? L.W - 13.7 : 33.3 * w / h - 11.4 - (edge ? 2 : 0)) - 0.3) : null;
   const roomStyle = d.to ? `--rc:${d.to.hex};--ri:${d.to.ink};--rn:${band.size.toFixed(2)}em;` : '';
   const piece = d.kind === 'piece';
   const name = piece ? d.items[0] || 'Furniture' : '';
   const rest = piece ? d.items.slice(1) : d.items;
-  const flags = [
-    d.fragile && `<span class="lab-flag lab-fragile">${flagIcon('fragile')}Fragile</span>`,
-    d.first && `<span class="lab-flag lab-first">${flagIcon('first')}Open first</span>`,
-    d.heavy && `<span class="lab-flag lab-heavy">${flagIcon('heavy')}Heavy</span>`,
-    d.car && `<span class="lab-flag lab-car">${flagIcon('car')}${tall || w > 5 ? 'Goes in the car' : 'In the car'}</span>`,
-  ].filter(Boolean);
-  // Where it's coming from, when that isn't a room of the same name.
-  const from = d.from && (!d.to || d.from.trim().toLowerCase() !== d.to.name.trim().toLowerCase()) ? `<span class="lab-from">from ${esc(d.from)}</span>` : '';
-  // Roughly how many characters of contents fit (a little under, so "+ 3 more" always shows): two lines across
-  // the label, three without flags, one when the flags take two rows.
-  const perLine = Math.round(w * 10.5);
-  const lines = flags.length >= 3 && !tall ? 1 : (tall ? 3 : 2) + (flags.length || from ? 0 : 1);
-  // A half sheet lists them a line each: seven lines, the last saying how many more if they don't all fit.
-  const fitLines = 7;
-  const { shown, left } = xwide
-    ? (rest.length + (d.more ? 1 : 0) <= fitLines ? { shown: rest, left: d.more } : { shown: rest.slice(0, fitLines - 1), left: rest.length - (fitLines - 1) + d.more })
-    : shortList(rest, d.more, perLine * lines);
+  const flags = L.fl.map(f => flagHTML(f, L.short));
+  const from = L.from ? `<span class="lab-from${L.fromAt === 'row' ? ' own' : ''}">from ${esc(L.from)}</span>` : '';
+  // A half sheet lists them a line each, the last saying how many more if they don't all fit.
+  const room = L.lines - (L.fromAt === 'list' ? Math.min(2, Math.ceil((L.from.length + 5) / L.perLine)) : 0);
+  const { shown, left } = xwide ? listFit(rest, d.more, room, L.perLine) : shortList(rest, d.more, L.lines, L.perLine);
+  const list = xwide
+    ? `<ul class="lab-items">${shown.map(t => `<li>${esc(t)}</li>`).join('')}${left && room > 0 ? `<li><em>+ ${left} more</em></li>` : ''}${L.fromAt === 'list' ? `<li class="lab-from-li">from ${esc(L.from)}</li>` : ''}</ul>`
+    : L.lines ? `<p class="lab-items">${shown.map(esc).join('<i>&nbsp;· </i>')}${left ? (shown.length ? ` <em>+ ${left} more</em>` : `<em>${left} ${left === 1 ? 'thing' : 'things'}</em>`) : ''}</p>` : '';
   return `
-    <article class="lab ${tall ? 'tall' : xwide ? 'wide xwide' : 'wide'}${d.to ? '' : ' no-room'}${piece ? ' piece' : ''}${edge ? ' edge' : ''}" style="--lw:${w};--lh:${h};${roomStyle}" data-digits="${digits}" data-flags="${flags.length}">
+    <article class="lab ${tall ? 'tall' : xwide ? 'wide xwide' : 'wide'}${d.to ? '' : ' no-room'}${piece ? ' piece' : ''}${edge ? ' edge' : ''}" style="--lw:${w};--lh:${h};--ff:${L.ff}em;--lines:${L.lines};${roomStyle}" data-digits="${digits}" data-flags="${flags.length}">
       <header class="lab-room">
         ${d.to ? `<span class="lab-shape">${shapeSVG(d.to.shape)}</span>` : ''}
         <span class="lab-room-name${band?.lines.length > 1 ? ' two' : ''}">${d.to ? band.lines.map(esc).join('<br>') : 'Room not picked'}</span>
@@ -125,12 +260,10 @@ export function label(d, { w = 4, h = 10 / 3, qr = true, edge = false } = {}) {
         <p class="lab-numrow"><span class="lab-kind">${piece ? 'No.' : 'Box'}</span><span class="lab-num">${d.n}</span></p>
         ${piece ? `<p class="lab-piece">${esc(name)}</p>` : ''}
       </div>
-      <p class="lab-foot"><span class="lab-mark">${upMark('lab-up2')}This side up</span>${tall && from ? from : ''}</p>
+      <p class="lab-foot"><span class="lab-mark">${upMark('lab-up2')}This side up</span>${L.fromAt === 'foot' ? from : ''}</p>
       ${qr && d.link ? qrSVG(d.link, { label: `QR code for ${piece ? name : 'box ' + d.n}`, cls: 'lab-qr' }) : '<span class="lab-qr"></span>'}
-      ${flags.length || (from && !tall) ? `<div class="lab-flags">${flags.join('')}${tall ? '' : from}</div>` : ''}
-      ${xwide
-        ? `<ul class="lab-items">${shown.map(t => `<li>${esc(t)}</li>`).join('')}${left ? `<li><em>+ ${left} more</em></li>` : ''}</ul>`
-        : `<p class="lab-items">${shown.map(esc).join('<i> · </i>')}${left ? `<em>${shown.length ? ` + ${left} more` : `${left} things`}</em>` : ''}</p>`}
+      ${flags.length || L.fromAt === 'flags' || L.fromAt === 'row' ? `<div class="lab-flags" data-rows="${L.rows + (L.fromAt === 'row' ? 1 : 0)}">${flags.join('')}${L.fromAt === 'flags' || L.fromAt === 'row' ? from : ''}</div>` : ''}
+      ${list}
     </article>`;
 }
 

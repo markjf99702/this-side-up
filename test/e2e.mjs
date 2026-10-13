@@ -314,6 +314,96 @@ assert.match(await page.locator('.nudge-pad').innerText(), /1\/16 in right/);
 await page.click('[data-nudge="reset"]');
 assert.match(await page.locator('.nudge-pad').innerText(), /0 in right/);
 
+// ---------- Crowded labels, on every sheet ----------
+// Boxes with two to four flags, a room they're leaving, long lists and long names: on every label sheet and plain
+// paper, nothing may run into the code or off the label, and every code on every printed page has to read.
+step('crowded labels on every sheet');
+const crowd = await device('crowd');
+await crowd.page.goto(base);
+const crowdBoxes = await crowd.page.evaluate(async () => {
+  const M = await import('./js/model.js');
+  const list = M.newList();
+  const to = name => (M.rooms(list, 'to').find(r => r.name === name) || M.addRoom(list, 'to', name)).id;
+  const from = name => (M.rooms(list, 'from').find(r => r.name === name) || M.addRoom(list, 'from', name)).id;
+  const six = ['Kettle', 'Mugs', 'Coffee', 'French press', 'Tea towels', 'The good knives'];
+  const add = f => M.putBox(list, M.newBox(list, f));
+  add({ from: from('Kitchen'), to: to('Kitchen'), items: six, fragile: true, first: true });
+  add({ from: from('Bedroom'), to: to('Primary bedroom'), items: ['Sheets', 'Pillows', 'Duvet', 'Alarm clock', 'Phone chargers', 'Pyjamas'], first: true, car: true });
+  add({ from: from('Bathroom'), to: to('Bathroom'), items: ['Medicines', 'First aid kit', 'Glasses and contacts', 'Toothbrushes', 'Shampoo', 'Hand towels', 'Hair dryer', 'Razor'], fragile: true, first: true, heavy: true, car: true });
+  add({ kind: 'piece', from: from('Living room'), to: to('Office'), items: ['Sofa (grey, three seats, the big one)', 'Feet in Box 23', 'Cushions in Box 9'], fragile: true, heavy: true });
+  add({ from: from('Living room'), to: to('Living room'), items: ['LEGO sets: Bonsai Tree, Tree House and the big castle', 'Instruction books', 'Spare bricks'], fragile: true, first: true, car: true });
+  add({ from: from('Garage'), to: to('Garage'), items: ['Drill', 'Screwdrivers', 'Hex keys', 'Tape measure', 'Box cutter', 'Level', 'Stud finder', 'Pliers', 'Wire cutters', 'Glue gun'] });
+  add({ n: 1234, from: from('Office'), to: to('Kids’ playroom & craft corner'), items: ['Crayons, markers & "special" glue', 'Émile’s drawings - don’t bend!', 'Paint'], fragile: true, first: true });
+  add({ from: from('Kitchen'), to: to('Guest room'), items: ['Plates'], heavy: true });
+  localStorage.setItem('this-side-up.v1', JSON.stringify(list));
+  return M.live(list).map(b => b.n);
+});
+await crowd.page.reload();
+await crowd.page.evaluate(() => document.fonts.ready);
+// Every label at its true size, on every sheet.
+const crowded = await crowd.page.evaluate(async () => {
+  const { store } = await import('./js/store.js');
+  const M = await import('./js/model.js');
+  const { label, fromBox } = await import('./js/labels.js');
+  const { SHEETS } = await import('./js/sheets.js');
+  const host = Object.assign(document.createElement('div'), { style: 'position:absolute;left:0;top:0;--u:96px' });
+  document.body.append(host);
+  const out = [];
+  const hit = (a, b) => a.bottom > b.top + 1 && a.top < b.bottom - 1 && a.right > b.left + 1 && a.left < b.right - 1;
+  for (const s of SHEETS) {
+    const inch = v => (s.unit === 'mm' ? v / 25.4 : v);
+    for (const box of M.live(store.list)) {
+      host.innerHTML = label(fromBox(box, store.list), { w: inch(s.label[0]), h: inch(s.label[1]), edge: !!s.edge });
+      const lab = host.querySelector('.lab').getBoundingClientRect();
+      const qr = host.querySelector('.lab-qr').getBoundingClientRect();
+      const where = `${s.id} box ${box.n}`;
+      if (qr.bottom > lab.bottom + 0.5 || qr.right > lab.right + 0.5) out.push(`${where}: the code runs off the label`);
+      for (const el of host.querySelectorAll('.lab-items, .lab-flags, .lab-flag, .lab-from, .lab-numwrap, .lab-foot')) {
+        const r = el.getBoundingClientRect();
+        if (el.matches('.lab-items, .lab-flags, .lab-flag') && hit(r, qr)) out.push(`${where}: ${el.className} runs into the code`);
+        if (r.bottom > lab.bottom - 1 || r.right > lab.right - 1) out.push(`${where}: ${el.className} runs off the label`);
+      }
+      const items = host.querySelector('p.lab-items');
+      if (items && items.scrollHeight > items.clientHeight + 1) out.push(`${where}: the list is cut off`);
+    }
+  }
+  host.remove();
+  return out;
+});
+assert.deepEqual(crowded, [], 'crowded labels fit on every sheet');
+// Printed: every page of every sheet, every code read where its label is.
+if (has('pdftoppm')) {
+  const { SHEETS, slots } = await import('../js/sheets.js');
+  await crowd.page.goto(base + '#/print');
+  await crowd.page.click('[data-which="all"]');
+  const DPI = 150;
+  for (const s of SHEETS) {
+    await crowd.page.selectOption('#sheetPick', s.id);
+    if (await crowd.page.locator('[data-start="0"]').count()) await crowd.page.click('[data-start="0"]');
+    await crowd.page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+    const pdf = join(tmp, `crowd-${s.id}.pdf`);
+    await crowd.page.pdf({ path: pdf, preferCSSPageSize: true, printBackground: true });
+    await crowd.page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+    execFileSync('pdftoppm', ['-r', String(DPI), '-png', pdf, join(tmp, `crowd-${s.id}`)]);
+    const files = (await import('node:fs')).readdirSync(tmp).filter(f => f.startsWith(`crowd-${s.id}-`) && f.endsWith('.png')).sort();
+    const perPage = slots(s).length;
+    assert.equal(files.length, Math.ceil(crowdBoxes.length / perPage), `${s.id}: every page printed`);
+    const inch = v => (s.unit === 'mm' ? v / 25.4 : v);
+    const read = [];
+    for (const f of files) {
+      const img = png(await readFile(join(tmp, f)));
+      for (const slot of slots(s)) {
+        const found = await readQR(...Object.values(crop(img, inch(slot.x) * DPI, inch(slot.y) * DPI, inch(slot.w) * DPI, inch(slot.h) * DPI)));
+        if (found.length) read.push(Number(found[0].text.split('#b/')[1].split('/')[1]));
+      }
+    }
+    assert.deepEqual(read, crowdBoxes, `${s.id}: every code on every page reads, in order`);
+  }
+} else {
+  console.log('  (pdftoppm not found: skipped printing the crowded labels)');
+}
+await crowd.ctx.close();
+
 // ---------- Moving day ----------
 step('the truck');
 await page.goto(base + '#/truck/load');

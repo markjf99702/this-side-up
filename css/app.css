@@ -466,7 +466,9 @@ body.bare { padding-bottom: 0; }
 /* ---------- The label, on paper and on screen ----------
    1em is a thirty-third of the label's height (a 3⅓ in label: 0.1 in), so everything scales with it.
    Wide labels: room band, then the number beside the code, then flags and contents across the bottom.
-   Tall labels: the same pieces stacked, with the code at the foot. */
+   Tall labels: the same pieces stacked, with the code at the foot.
+   layout() in js/labels.js does the same sums as these sizes to work out how many lines of contents fit
+   (and how big the flags can be), so a change to a height here needs the same change there. */
 .lab {
   --rc: #d9d2c5; --ri: #3b3329;
   position: relative; overflow: hidden;
@@ -482,9 +484,10 @@ body.bare { padding-bottom: 0; }
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
 .lab.tall {
-  font-size: calc(var(--u) * var(--lw) / 35);
+  /* A thirty-fifth of the width, or a fiftieth of the height on a squat label (plain Letter paper). */
+  font-size: min(calc(var(--u) * var(--lw) / 35), calc(var(--u) * var(--lh) / 50));
   grid-template-columns: 15em minmax(0, 1fr);
-  grid-template-rows: 6.2em auto auto minmax(0, 1fr) 15em;
+  grid-template-rows: 6.2em auto auto minmax(0, 1fr) 15.9em;
   grid-template-areas: "room room" "num num" "flags flags" "items items" "qr foot";
 }
 .lab p { margin: 0; }
@@ -511,9 +514,9 @@ body.bare { padding-bottom: 0; }
 .lab-num { display: block; font-family: var(--stencil); font-weight: 900; font-size: 15em; letter-spacing: -.01em; line-height: .82; }
 .lab[data-digits="3"] .lab-num { font-size: 13.2em; }
 .lab[data-digits="4"] .lab-num { font-size: 10em; }
-.lab.piece .lab-num { font-size: 7.5em; }
-.lab.piece[data-digits="3"] .lab-num { font-size: 6.6em; }
-.lab.piece[data-digits="4"] .lab-num { font-size: 5.2em; }
+.lab.piece .lab-num { font-size: 7em; }
+.lab.piece[data-digits="3"] .lab-num { font-size: 6.2em; }
+.lab.piece[data-digits="4"] .lab-num { font-size: 4.9em; }
 .lab-piece { margin-top: .2em !important; font-weight: 860; font-stretch: 66%; font-size: 3em; line-height: .95; text-transform: uppercase; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .lab-foot { grid-area: num; align-self: end; display: flex; flex-direction: column; gap: .3em; min-width: 0; padding-bottom: .1em; }
 .lab-mark { display: inline-flex; align-items: center; gap: .3em; font-family: var(--stencil); font-weight: 800; font-size: 1.6em; letter-spacing: .08em; text-transform: uppercase; line-height: 1; }
@@ -524,20 +527,25 @@ body.bare { padding-bottom: 0; }
 .lab-flag {
   display: inline-flex; align-items: center; gap: .3em; flex: none;
   padding: .35em .7em .35em .5em; border-radius: .45em;
-  font-weight: 860; font-stretch: 72%; font-size: 1.85em; line-height: 1; letter-spacing: .05em; text-transform: uppercase;
+  font-weight: 860; font-stretch: 72%; font-size: var(--ff, 1.85em); line-height: 1; letter-spacing: .05em; text-transform: uppercase;
   border: .14em solid currentColor;
 }
-.lab[data-flags="3"] .lab-flag, .lab[data-flags="4"] .lab-flag { font-size: 1.5em; }
-.lab.wide:not(.xwide)[data-flags="3"] .lab-items, .lab.wide:not(.xwide)[data-flags="4"] .lab-items { -webkit-line-clamp: 1; }
-.lab-flags .lab-from { flex-basis: auto; }
+/* One row of flags stays one row: a little too wide (a font that didn't arrive) runs off the edge, not onto the code. */
+.lab-flags[data-rows="1"] { flex-wrap: nowrap; }
+.lab-flags .lab-from { flex: 1 1 0; }
+.lab-flags .lab-from.own { flex-basis: 100%; }
 .lab-flag .ficon { width: 1.15em; height: 1.15em; color: inherit; }
 .lab-fragile { color: var(--stamp); transform: rotate(-2.5deg); border-width: .18em; box-shadow: inset 0 0 0 .1em #fff, inset 0 0 0 .2em var(--stamp); padding: .4em .8em .4em .55em; }
 .lab-first { background: #111; color: #fff; border-color: #111; }
 .lab-first .ficon { color: #ffd23f; }
 .lab-heavy { color: #111; }
 .lab-car { color: #0d4e8c; }
-.lab-items { grid-area: items; align-self: start; margin-top: .7em !important; font-size: 1.62em; line-height: 1.22; font-weight: 560; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.lab[data-flags="0"] .lab-items { -webkit-line-clamp: 3; }
+/* As many lines as layout() says fit (--lines), and never taller than that. */
+.lab-items {
+  grid-area: items; align-self: start; margin-top: .7em !important; font-size: 1.62em; line-height: 1.22; font-weight: 560;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: var(--lines, 2); -webkit-box-orient: vertical;
+  max-height: calc(var(--lines, 2) * 1.22em); text-wrap: wrap;
+}
 .lab-items:empty { display: none; }
 .lab-items i { font-style: normal; color: #9a9184; }
 .lab-items em { font-style: normal; font-weight: 750; color: #555; white-space: nowrap; }
@@ -546,25 +554,25 @@ body.bare { padding-bottom: 0; }
 .lab.edge { padding: calc(var(--u) * .25); }
 /* Half sheets: number, a list of what's in it, and the code, side by side. */
 .lab.xwide {
-  grid-template-columns: auto minmax(0, 1fr) 15em; column-gap: 1.6em;
+  grid-template-columns: fit-content(17em) minmax(0, 1fr) 15em; column-gap: 1.6em;
   grid-template-rows: 6.2em minmax(0, 1fr) auto;
   grid-template-areas: "room room room" "num items qr" "flags flags flags";
 }
 .lab.xwide .lab-num { font-size: 18.5em; }
-.lab.xwide[data-digits="3"] .lab-num { font-size: 16em; }
-.lab.xwide[data-digits="4"] .lab-num { font-size: 13em; }
+.lab.xwide[data-digits="2"] .lab-num { font-size: 15em; }
+.lab.xwide[data-digits="3"] .lab-num { font-size: 11.5em; }
+.lab.xwide[data-digits="4"] .lab-num { font-size: 9em; }
 .lab.xwide.piece .lab-num { font-size: 10em; }
 .lab.xwide .lab-flags { margin-bottom: .2em; }
-.lab.xwide .lab-items { display: block; list-style: none; margin: 1.1em 0 0 !important; padding: 0 0 0 1.4em; border-left: .14em solid #d9d2c5; font-size: 1.75em; line-height: 1.32; overflow: hidden; }
-.lab.xwide .lab-items li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lab.xwide .lab-items { display: block; list-style: none; margin: 1.1em 0 0 !important; padding: 0 0 0 1.4em; border-left: .14em solid #d9d2c5; font-size: 1.75em; line-height: 1.32; overflow: hidden; max-height: calc(var(--lines, 7) * 1.32em); }
+.lab.xwide .lab-items li { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: break-word; text-wrap: wrap; }
+.lab.xwide .lab-items .lab-from-li { color: #444; font-weight: 650; font-size: .86em; }
 .lab.xwide .lab-flags { margin-top: .8em; }
 /* Tall labels */
 .lab.tall .lab-num { font-size: 17.5em; }
 .lab.tall[data-digits="3"] .lab-num { font-size: 14em; }
 .lab.tall[data-digits="4"] .lab-num { font-size: 10.5em; }
 .lab.tall.piece .lab-num { font-size: 10em; }
-.lab.tall .lab-items { -webkit-line-clamp: 3; }
-.lab.tall[data-flags="0"] .lab-items { -webkit-line-clamp: 4; }
 .lab.tall .lab-foot { grid-area: foot; align-self: center; gap: .6em; margin-top: .9em; }
 .lab.tall .lab-from { white-space: normal; text-align: left; font-size: 1.7em; flex: none; }
 .lab.tall .lab-mark { font-size: 2em; }
