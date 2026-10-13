@@ -1,6 +1,6 @@
 // Packing a box (or the sofa): its number, the room it's leaving and the room it's going to, what's in it a
 // line at a time, and the four flags. The label draws itself underneath as you type.
-import { store, photos, shrink } from './store.js';
+import { store, photos } from './store.js';
 import { app, esc, on, go, toast, icon, flagIcon, $, $$, plural } from './ui.js';
 import * as M from './model.js';
 import { dot } from './common.js';

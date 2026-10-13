@@ -4,7 +4,7 @@ import { store, photos, shrink } from './store.js';
 import { app, esc, on, go, toast, icon, flagIcon, sheet, plural, when, $, upMark } from './ui.js';
 import * as M from './model.js';
 import { shapeSVG } from './rooms.js';
-import { dot, tile, needsLabel, stageNote, shapeName } from './common.js';
+import { dot, tile, needsLabel, shapeName } from './common.js';
 import { onScreen, fromBox, fromLink } from './labels.js';
 
 // ---------- Photos ----------
@@ -239,7 +239,9 @@ export function labelView(p, link, mine = [], n = null) {
   const things = piece ? d.items.slice(1) : d.items;
   app.innerHTML = `
     <div class="narrow scan-wrap">
-      ${ours ? `<div class="banner warn"><p><b>Box ${d.n} isn’t in your list any more.</b> This is what its label says.</p>${list.boxes.some(b => b.n === d.n && b.gone) ? '<button class="btn small" data-act="restore">Put it back</button>' : ''}</div>` : ''}
+      ${ours ? (list.boxes.some(b => b.n === d.n && b.gone)
+        ? `<div class="banner warn"><p><b>Box ${d.n} isn’t in your list any more.</b> This is what its label says.</p><button class="btn small" data-act="restore">Put it back</button></div>`
+        : `<div class="banner warn"><p><b>Box ${d.n} isn’t on this phone yet.</b> It was packed on another phone: send the list across from there. This is what its label says.</p></div>`) : ''}
       <section class="scanned" style="${st ? `--rc:${st.hex};--ri:${st.ink}` : ''}">
         <header class="scan-room${st ? '' : ' none'}">
           ${st ? `<span class="scan-shape">${shapeSVG(st.shape)}</span>` : ''}

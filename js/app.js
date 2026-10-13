@@ -1,7 +1,7 @@
 // Which screen goes with which address, and opening links that arrive: a label's QR code (#b/…),
 // a Tag Along sticker (#box/12) or a whole list from another phone (#l/…).
 import { store } from './store.js';
-import { app, $, $$, go, toast } from './ui.js';
+import { app, $, $$, go } from './ui.js';
 import * as M from './model.js';
 import { readBoxFragment, readNumber } from './payload.js';
 import { needsLabel } from './common.js';
@@ -28,7 +28,6 @@ const routes = [
   [/^\/more$/, 'more', () => more()],
 ];
 
-let last = '';
 async function render() {
   // Label links keep their own escapes (a "/" or "~" inside a thing is escaped), so they're read as they are.
   const raw = location.hash.slice(1).trim();
@@ -60,7 +59,6 @@ async function render() {
     const m = path.match(re);
     if (!m) continue;
     setTab(tab);
-    last = path;
     return show(...m.slice(1));
   }
   go('/', true);

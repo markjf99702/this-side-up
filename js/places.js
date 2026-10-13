@@ -3,7 +3,7 @@
 import { store } from './store.js';
 import { app, esc, on, go, toast, icon, sheet, plural, $ } from './ui.js';
 import * as M from './model.js';
-import { COLOURS, SHAPES, PRESETS, shapeSVG, styleOf } from './rooms.js';
+import { COLOURS, SHAPES, PRESETS, shapeSVG } from './rooms.js';
 import { dot } from './common.js';
 
 const SIDES = {

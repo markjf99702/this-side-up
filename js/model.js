@@ -97,9 +97,9 @@ export function cleanList(raw) {
   };
   if (raw.example === true) list.example = true;
   // Two rooms or boxes with the same id would confuse everything after this: keep the first of each.
-  const seen = new Set();
-  list.rooms = list.rooms.filter(r => !seen.has(r.id) && seen.add(r.id));
-  list.boxes = list.boxes.filter(b => !seen.has(b.uid) && seen.add(b.uid));
+  const roomIds = new Set(), boxIds = new Set();
+  list.rooms = list.rooms.filter(r => !roomIds.has(r.id) && roomIds.add(r.id));
+  list.boxes = list.boxes.filter(b => !boxIds.has(b.uid) && boxIds.add(b.uid));
   return list;
 }
 
@@ -108,18 +108,14 @@ export function cleanList(raw) {
 export const live = list => list.boxes.filter(b => !b.gone).sort((a, b) => a.n - b.n || a.made - b.made);
 export const rooms = (list, side) => list.rooms.filter(r => r.side === side && !r.gone);
 export const room = (list, rid) => (rid ? list.rooms.find(r => r.id === rid) || null : null);
+// A room that's still there (one removed on another phone may still have boxes pointing at it).
+const liveRoom = (list, rid) => { const r = room(list, rid); return r && !r.gone ? r : null; };
 export const findNumber = (list, n) => live(list).filter(b => b.n === n);
 export const byUid = (list, u) => list.boxes.find(b => b.uid === u) || null;
 
 export function nextNumber(list) {
   const nums = live(list).map(b => b.n);
   return Math.min(MAX_NUMBER, (nums.length ? Math.max(...nums) : 0) + 1);
-}
-
-// What to call it in a sentence: "Box 12", or "Sofa (12)" for furniture.
-export function title(box) {
-  if (box.kind === 'piece') return box.items[0] ? `${box.items[0]}` : `Piece ${box.n}`;
-  return `Box ${box.n}`;
 }
 
 export const flagWords = { fragile: 'Fragile', heavy: 'Heavy', first: 'Open first', car: 'Goes in the car' };
@@ -173,7 +169,7 @@ export function missing(list, stage) {
   const left = live(list).filter(b => !done(b, stage));
   const groups = new Map();
   for (const b of left) {
-    const key = b[side] && room(list, b[side]) ? b[side] : '';
+    const key = liveRoom(list, b[side]) ? b[side] : '';
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(b);
   }
@@ -191,7 +187,7 @@ export function progress(list, stage) {
     const mine = all.filter(b => b[side] === r.id);
     return { room: r, total: mine.length, done: mine.filter(b => done(b, stage)).length };
   }).filter(p => p.total);
-  const loose = all.filter(b => !b[side] || !room(list, b[side]));
+  const loose = all.filter(b => !liveRoom(list, b[side]));
   if (loose.length) out.push({ room: null, total: loose.length, done: loose.filter(b => done(b, stage)).length });
   return out;
 }
