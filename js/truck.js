@@ -227,6 +227,7 @@ function boxCard(box, list, stage, ticked, typed = '') {
   const to = M.room(list, box.to), from = M.room(list, box.from);
   const st = to ? styleOf(to) : null;
   const where = stage === 'unload' ? to : from;
+  const piece = box.kind === 'piece';
   const flags = M.FLAGS.filter(f => box[f]);
   return `
     <div class="rd-box${ticked ? ' ticked' : ''}" style="${st ? `--rc:${st.hex};--ri:${st.ink}` : ''}">
@@ -234,7 +235,7 @@ function boxCard(box, list, stage, ticked, typed = '') {
       <span class="rd-what">
         ${stage !== 'load'
           ? `<span class="rd-to">${st ? `<span class="rd-shape">${shapeSVG(st.shape)}</span>` : ''}<span><small>${stage === 'unpack' ? 'In the' : ticked ? 'Take it to the' : 'Goes to the'}</small><b>${esc(to?.name || 'No room')}</b></span></span>`
-          : `<span class="rd-to plain"><span><small>${box.car ? 'Goes in the car, not the truck' : where ? 'From the' : ''}</small><b>${esc(box.kind === 'piece' ? box.items[0] || 'Furniture' : where?.name || 'Box ' + box.n)}</b></span></span>`}
+          : `<span class="rd-to plain"><span><small>${box.car ? 'Goes in the car, not the truck' : piece ? (where ? `From the ${esc(where.name)}` : 'Furniture') : where ? 'From the' : ''}</small><b>${esc(piece ? box.items[0] || 'Furniture' : where?.name || 'Box ' + box.n)}</b></span></span>`}
         <span class="rd-things">${esc((box.kind === 'piece' ? box.items.slice(1) : box.items).slice(0, 4).join(' · '))}</span>
         ${flags.length ? `<span class="rd-flags">${flags.map(f => `<span class="rd-flag f-${f}">${flagIcon(f)}${M.flagWords[f]}</span>`).join('')}</span>` : ''}
       </span>

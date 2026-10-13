@@ -59,7 +59,10 @@ async function packBox(page, { from, to, things, flags = [], piece = false, name
   if (!(await hash(page)).startsWith('#/new')) await page.goto(base + '#/new');
   await page.locator('#packForm').waitFor();
   if (piece) await page.click('[data-kind="piece"]');
-  if (from) await page.click(`[data-side="from"] .chip:text-is("${from}")`);
+  if (from) {
+    const chip = page.locator(`[data-side="from"] .chip:text-is("${from}")`);
+    if ((await chip.getAttribute('aria-pressed')) !== 'true') await chip.click(); // a second tap would unpick it
+  }
   if (to) {
     const chip = page.locator(`[data-side="to"] .chip`, { hasText: to }).first();
     if ((await chip.getAttribute('aria-pressed')) !== 'true') await chip.click();
@@ -475,6 +478,10 @@ await key('tick');
 assert.match(await page.locator('#readout').innerText(), /already on the truck/);
 await page.click('[data-act="undo"]');
 await toastSays(page, /Box 2 unticked/);
+// Furniture says what it is, under the room it's leaving.
+await keyIn(4);
+assert.match(await page.locator('#readout').innerText(), /From the Living room\s+Sofa/i);
+await key('back');
 for (const n of [1, 2, 3, 4]) { await keyIn(n); await key('tick'); }
 assert.match(await page.locator('.truck-count').innerText(), /4 of 4 on the truck/);
 await keyIn(5);
@@ -485,6 +492,7 @@ assert.match(await page.locator('.truck-count').innerText(), /Everything’s loa
 
 await page.click('.truck-head a:has-text("Unloading")');
 await page.waitForURL(/unload$/);
+await page.locator('.truck-screen[data-stage="unload"]').waitFor();
 await keyIn(1);
 assert.match(await page.locator('#readout').innerText(), /Goes to the\s+Kitchen/i);
 await key('tick');
@@ -508,6 +516,7 @@ await page.locator('[data-stage="unpack"][aria-pressed="true"]').waitFor();
 await page.click('.tabs a[data-tab="truck"]');
 await page.click('.truck-head a:has-text("Unpacking")');
 await page.waitForURL(/unpack$/);
+await page.locator('.truck-screen[data-stage="unpack"]').waitFor();
 assert.match(await page.locator('.truck-count').innerText(), /1 of 5 unpacked/);
 await keyIn(1);
 await key('tick');
