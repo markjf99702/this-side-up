@@ -88,12 +88,12 @@ window.addEventListener('storage', e => {
   // Don't redraw under someone's fingers while they're typing.
   const typing = document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
   if (!typing) render();
-// Tidy away photos from boxes that were never saved, once things have settled.
-setTimeout(() => photos.sweep(store.list).catch(() => {}), 4000);
 });
 window.addEventListener('beforeprint', preparePrint);
 
 render();
+// Tidy away photos from boxes that were never saved, once things have settled.
+setTimeout(() => photos.sweep(store.list).catch(() => {}), 4000);
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:' && !document.documentElement.dataset.single) {
   navigator.serviceWorker.register('sw.js').catch(() => { /* fine: it just won't work offline */ });
