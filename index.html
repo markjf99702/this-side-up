@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>This Side Up</title>
+  <meta name="description" content="Number every box in the move and say what's in it, which room it's going to and whether to open it first. Print labels with a QR code any phone can read, tick boxes onto the truck and off again, and search for the kettle.">
+  <meta property="og:title" content="This Side Up">
+  <meta property="og:description" content="Number the boxes, print the labels, count them onto the truck and off again.">
+  <meta property="og:image" content="https://junkdrawer.works/this-side-up/og.png">
+  <meta property="og:url" content="https://junkdrawer.works/this-side-up/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#c39a6b">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="preload" href="fonts/big-shoulders-stencil.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/app.css">
+  <style id="page-size">@page { size: 8.5in 11in; margin: 0; }</style>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="#/" aria-label="This Side Up, all boxes">
+      <svg class="brand-up" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3 2.6 9h2.9v8.5h3V9h2.9zM17 3l-4.4 6h2.9v8.5h3V9h2.9z" fill="currentColor"/><rect x="2" y="19.6" width="20" height="2.4" fill="currentColor"/></svg>
+      <span>This Side Up</span>
+    </a>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#/" data-tab="boxes"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 13.5h8v7h-8zM12.5 13.5h8v7h-8zM8 6.5h8v7H8z"/><path d="M7.5 13.5v2.5M16.5 13.5v2.5M12 6.5V9"/></svg><span>Boxes</span></a>
+      <a href="#/new" data-tab="pack"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5 12 4l8 4.5v8L12 21l-8-4.5z"/><path d="M4 8.5 12 13l8-4.5M12 13v8"/></svg><span>Pack</span></a>
+      <a href="#/truck" data-tab="truck"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5h11v10h-11zM13.5 9.5h4l3.5 3.6v3.4h-7.5"/><circle cx="6.5" cy="17.5" r="1.9"/><circle cx="17" cy="17.5" r="1.9"/></svg><span>Truck</span></a>
+      <a href="#/print" data-tab="print"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3.5h10V9M7 17.5H4.5v-7a1.5 1.5 0 0 1 1.5-1.5h12a1.5 1.5 0 0 1 1.5 1.5v7H17"/><path d="M7 14h10v6.5H7z"/></svg><span>Print</span><b class="badge" id="printBadge" hidden></b></a>
+      <a href="#/more" data-tab="more"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/></svg><span>More</span></a>
+    </nav>
+  </header>
+
+  <main id="app" tabindex="-1"></main>
+
+  <footer class="jd-foot">
+    <a href="https://junkdrawer.works/">Part of junkdrawer.works</a>
+    <span aria-hidden="true">·</span>
+    <a href="https://junkdrawer.works/privacy.html">Privacy</a>
+  </footer>
+
+  <noscript><p class="noscript">This Side Up needs JavaScript to keep the list of boxes and draw the labels.</p></noscript>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <dialog class="sheet" id="sheet" aria-label="Details">
+    <div class="sheet-body"></div>
+  </dialog>
+
+  <div id="print-root"></div>
+</body>
+</html>

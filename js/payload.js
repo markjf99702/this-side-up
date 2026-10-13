@@ -66,6 +66,10 @@ function encName(name) {
 
 export const boxLink = (box, list, at = base()) => at + '#' + boxFragment(box, list, QR_BYTES - at.length - 1);
 
+// What the label says. If it's changed since the label was printed, the label needs printing again.
+export const labelSig = (box, list) => boxFragment(box, list, QR_BYTES - SITE.length - 1);
+export const needsLabel = (box, list) => !box.printed || box.printedSig !== labelSig(box, list);
+
 // Reads a box back out of a label's link. Null if it isn't one.
 export function readBoxFragment(fragment) {
   const m = String(fragment || '').replace(/^#/, '').match(/^b\/([a-z0-9]{1,24})\/(\d{1,4})\/([phfoc]*)\/(\d{2})?\/([^/]*)\/([^/]*)\/(\d*)\/(.*)$/i);
