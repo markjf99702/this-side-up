@@ -155,18 +155,47 @@ function results(list, q) {
     <ul class="boxes">${(one ? found.slice(1) : found).map(h => boxRow(h.box, list, { hit: h, query: q })).join('')}</ul>`;
 }
 
-function ownList() {
+// Leaving the example. Boxes packed in it by hand (not the example's own) can come along, numbered from 1.
+export function ownList() {
+  const list = store.list;
+  const mine = list?.example ? M.live(list).filter(b => b.made > list.made) : [];
+  const named = b => (b.kind === 'piece' ? esc(b.items[0] || 'Furniture') : `Box ${b.n}${b.items.length ? ` (${esc(b.items.slice(0, 2).join(', '))})` : ''}`);
   sheet(`
     <h2>Start your own list</h2>
-    <p>This clears the example. Your own boxes start at number 1.</p>
-    <div class="row"><button class="btn" data-close>Not yet</button><button class="btn primary" id="sheetGo">Clear the example</button></div>
+    ${mine.length
+      ? `<p>This clears the example. You packed ${mine.length === 1 ? named(mine[0]) : `${mine.length} boxes`} in it yourself: keep ${mine.length === 1 ? 'it' : 'them'}, numbered from 1 in your own list?</p>`
+      : '<p>This clears the example. Your own boxes start at number 1.</p>'}
+    <div class="row">
+      <button class="btn" data-close>Not yet</button>
+      ${mine.length ? `<button class="btn" id="sheetClear">Clear all of it</button><button class="btn primary" id="sheetKeep">Keep ${mine.length === 1 ? 'it' : 'mine'}</button>` : '<button class="btn primary" id="sheetClear">Clear the example</button>'}
+    </div>
   `, (body, close) => {
-    body.querySelector('#sheetGo').onclick = () => {
+    const start = keep => {
       close();
       startList();
-      toast('Ready. Pack the first box.');
-      go('/new');
+      if (keep.length) carry(list, keep, store.list);
+      store.save();
+      toast(keep.length ? `Your own list, with ${plural(keep.length, 'box', 'boxes')} from the example` : 'Ready. Pack the first box.');
+      go(keep.length ? '/' : '/new');
     };
+    body.querySelector('#sheetClear').onclick = () => start([]);
+    body.querySelector('#sheetKeep')?.addEventListener('click', () => start(mine));
+  });
+}
+
+// Boxes from the example into a fresh list: the same things and flags, rooms matched by name, new numbers.
+function carry(from, boxes, to) {
+  const roomFor = (rid, side) => {
+    const r = M.room(from, rid);
+    if (!r) return '';
+    return (M.rooms(to, side).find(x => M.norm(x.name) === M.norm(r.name)) || M.addRoom(to, side, r.name)).id;
+  };
+  boxes.forEach((b, i) => {
+    M.putBox(to, M.cleanBox({
+      uid: b.uid, n: i + 1, kind: b.kind, items: b.items, photos: b.photos, made: b.made,
+      from: roomFor(b.from, 'from'), to: roomFor(b.to, 'to'),
+      fragile: b.fragile, heavy: b.heavy, first: b.first, car: b.car,
+    }));
   });
 }
 

@@ -657,10 +657,21 @@ await fresh.page.goto(base);
 await fresh.page.click('[data-act="example"]');
 await fresh.page.locator('.banner').waitFor();
 assert.ok(await fresh.page.locator('.boxrow').count() > 20, 'an example move to look around');
-await fresh.page.click('[data-act="own"]');
-await fresh.page.click('#sheetGo');
-await fresh.page.waitForURL(/#\/new$/);
-assert.equal(await fresh.page.inputValue('#num'), '1', 'their own list starts at 1');
+// A real box packed in the example: Pack says it's the example, and starting your own list can keep the box.
+await fresh.page.click('.tabs a[data-tab="pack"]');
+assert.match(await fresh.page.locator('.pack .banner').innerText(), /This is the example move/);
+await fresh.page.fill('#things', 'My real kettle');
+await fresh.page.click('#save');
+await savedSays(fresh.page, /Box 32 saved/);
+await fresh.page.click('.pack .banner [data-act="own"]');
+assert.match(await fresh.page.locator('.sheet').innerText(), /You packed Box 32 \(My real kettle\) in it yourself/);
+await fresh.page.click('#sheetKeep');
+await fresh.page.waitForURL(/#\/$/);
+assert.equal(await fresh.page.locator('.boxrow').count(), 1, 'just the box packed by hand');
+assert.match(await fresh.page.locator('.boxrow').innerText(), /My real kettle/);
+assert.equal(await fresh.page.locator('.banner').count(), 0, 'and the example is gone');
+await fresh.page.click('.tabs a[data-tab="pack"]');
+assert.equal(await fresh.page.inputValue('#num'), '2', 'their own list starts at 1, so the next is 2');
 
 // ---------- Every project's checks ----------
 step('offline');

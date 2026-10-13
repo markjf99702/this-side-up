@@ -7,7 +7,7 @@ import * as M from './model.js';
 import { dot } from './common.js';
 import { onScreen, fromBox } from './labels.js';
 import { addRoomSheet } from './places.js';
-import { startList } from './home.js';
+import { startList, ownList } from './home.js';
 import { photoStrip, addPhoto } from './box.js';
 
 const FLAG_INFO = {
@@ -68,6 +68,7 @@ export function pack(editUid, number) {
     const piece = box.kind === 'piece';
     app.innerHTML = `
       <div class="pack">
+        ${list.example ? `<div class="banner"><p><b>This is the example move.</b> A box packed here goes when you start your own list, unless you keep it then.</p><button type="button" class="btn small primary" data-act="own">Start my own list</button></div>` : ''}
         <div class="screen-head">
           <div>
             <p class="kicker kraft">${editing ? 'Change' : 'Pack'}</p>
@@ -274,6 +275,7 @@ export function pack(editUid, number) {
         preview();
         return;
       }
+      if (t.dataset.act === 'own') { ownList(); return; }
       if (t.dataset.act === 'fresh') {
         drafts.set(editing ? editing.uid : null, null);
         pack(editUid);
