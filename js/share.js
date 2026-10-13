@@ -90,6 +90,7 @@ export async function sendSheet() {
   sheet(`
     <h2>Send the list</h2>
     <p>The whole list goes in the link, ${plural(n, 'box', 'boxes')} of it. Open it on the other phone and it’s saved there too. Photos stay on this phone: a backup file carries those.</p>
+    ${link.length > 8000 ? `<p class="warn-text">It’s a long link (${Math.round(link.length / 1000)},000 characters). If it arrives cut short, send a backup file instead.</p>` : ''}
     <textarea class="input" id="sheetLink" rows="3" readonly>${esc(link)}</textarea>
     <div class="row">
       <button class="btn" data-close>Close</button>
