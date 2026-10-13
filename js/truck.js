@@ -46,6 +46,7 @@ export function truck(stage) {
         <button class="btn small" data-act="missing" id="missingBtn"></button>
         <button class="btn small ghost" data-act="reset">Start the count again</button>
       </div>
+      <section class="card rooms-card" id="roomsCard"></section>
     </div>`;
   drawTruck(false);
   readout();
@@ -152,12 +153,18 @@ export function truck(stage) {
     card.className = `truck-card${finished ? ' finished' : ''}`;
     card.innerHTML = `
       <div class="truck-art">${truckSVG(stage, stage === 'load' ? truckBoxes.filter(b => b.loaded).length : all.length - doneN, stage === 'load' ? truckBoxes.length : all.length, animate)}</div>
-      <p class="truck-count">${finished ? finishedLine(list, stage, all) : word}</p>
-      ${prog.length && stage === 'unload' ? `<ul class="rooms-prog">${prog.map(p => `<li class="${p.done === p.total ? 'full' : ''}">${p.room ? dot(p.room) : ''}<span>${esc(p.room?.name || 'No room')}</span><b>${p.done}/${p.total}</b><i style="--p:${p.total ? p.done / p.total : 0}"></i></li>`).join('')}</ul>` : ''}`;
+      <p class="truck-count">${finished ? finishedLine(list, stage, all) : word}</p>`;
+    // Room by room: the rooms being emptied while loading, the rooms being filled at the other end.
+    $('#roomsCard').innerHTML = prog.length ? `
+      <h2>${stage === 'load' ? 'Room by room, at the old place' : 'Room by room, at the new place'}</h2>
+      <ul class="rooms-prog">${prog.map(p => `<li class="${p.done === p.total ? 'full' : ''}">${p.room ? dot(p.room) : ''}<span>${esc(p.room?.name || 'No room')}</span><b>${p.done}/${p.total}</b><i style="--p:${p.total ? p.done / p.total : 0}"></i></li>`).join('')}</ul>` : '';
+    $('#roomsCard').hidden = !prog.length;
     if (finished && animate && !celebrated[stage]) {
       celebrated[stage] = true;
       card.classList.add('celebrate');
       buzz([40, 60, 40, 60, 120]);
+      // The truck is up top; whoever ticked the last box is looking at the keys.
+      card.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
     }
     const left = all.length - doneN;
     $('#missingBtn').innerHTML = left ? `${WORDS[stage].missing} <b>${left}</b>` : 'Nothing missing';
