@@ -759,6 +759,12 @@ body.bare { padding-bottom: 0; }
   .truck-head h1 { font-size: 1.25rem; }
   .truck-head .seg a { padding: 8px 6px; font-size: .76rem; }
 }
+/* The smallest phones: the three parts of the day get the whole row (the heading stays for screen readers), and
+   on a short one the count goes without the truck so 0 and On still sit above the tabs. */
+@media (max-width: 340px) {
+  .truck-head h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .truck-head .seg { flex: 1 1 auto; }
+}
 /* A shorter phone (or a browser's own bars taking the room): the truck and its count side by side. */
 @media (max-width: 899px) and (max-height: 760px) {
   .truck-card { height: 82px; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 12px; padding: 6px 12px 6px 6px; }
@@ -769,6 +775,12 @@ body.bare { padding-bottom: 0; }
   .truck-card.finished .truck-count b { font-size: 1rem; }
   .readout { height: 86px; }
   .key { height: 52px; }
+}
+@media (max-width: 899px) and (max-height: 600px) {
+  .truck-card { height: 58px; grid-template-columns: minmax(0, 1fr); padding: 6px 14px; }
+  .truck-art { display: none; }
+  .readout { height: 80px; }
+  .key { height: 48px; }
 }
 
 /* ---------- The first night ---------- */
