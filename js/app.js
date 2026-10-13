@@ -1,7 +1,7 @@
 // Which screen goes with which address, and opening links that arrive: a label's QR code (#b/…),
 // a Tag Along sticker (#box/12) or a whole list from another phone (#l/…).
 import { store, photos } from './store.js';
-import { app, $, $$, go } from './ui.js';
+import { app, $, $$, go, refreshScreen } from './ui.js';
 import * as M from './model.js';
 import { readBoxFragment, readNumber } from './payload.js';
 import { needsLabel } from './common.js';
@@ -29,12 +29,16 @@ const routes = [
   [/^\/more$/, 'more', () => more()],
 ];
 
-async function render() {
+// Draws the screen for the address. again: the same screen drawn afresh where it is (the list changed in another
+// tab), keeping the scroll and any sheet that's open.
+async function render(again = false) {
   // Label links keep their own escapes (a "/" or "~" inside a thing is escaped), so they're read as they are.
   const raw = location.hash.slice(1).trim();
-  document.getElementById('sheet').close?.();
+  if (!again) {
+    document.getElementById('sheet').close?.();
+    window.scrollTo(0, 0);
+  }
   document.title = 'This Side Up';
-  window.scrollTo(0, 0);
 
   // A label's QR code: on a phone with this move's list it opens the box there; anywhere else it shows the label.
   if (raw.startsWith('b/')) {
@@ -82,14 +86,30 @@ export function badge() {
   el.textContent = n > 99 ? '99+' : String(n);
 }
 
-window.addEventListener('hashchange', () => render().catch(e => { console.error(e); app.innerHTML = '<p class="empty-note">Something went wrong drawing this screen.</p>'; }));
-window.addEventListener('storage', e => {
-  if (e.key !== store.key) return;
-  store.reload();
+const drawn = again => render(again).catch(e => { console.error(e); app.innerHTML = '<p class="empty-note">Something went wrong drawing this screen.</p>'; });
+window.addEventListener('hashchange', () => drawn(false));
+
+// Another tab saved the list, or this one is back from the background and may have missed it: catch up. The same
+// list comes into the objects every screen is holding, so nothing typed here is lost and what's saved next keeps
+// the other tab's changes too.
+function catchUp() {
+  const what = store.sync();
+  if (what === 'same') return;
+  if (what === 'replaced') {
+    // Another list altogether (cleared, the example, one from another phone): start again with it.
+    document.getElementById('sheet').close?.();
+    drawn(true);
+    return;
+  }
+  badge();
+  if (refreshScreen()) return;
   // Don't redraw under someone's fingers while they're typing.
   const typing = document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
-  if (!typing) render();
-});
+  if (!typing) drawn(true);
+}
+window.addEventListener('storage', e => { if (e.key === store.key || e.key === null) catchUp(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') catchUp(); });
+window.addEventListener('pageshow', e => { if (e.persisted) catchUp(); });
 window.addEventListener('beforeprint', preparePrint);
 // A room renamed, a box changed or a label marked printed changes what's left to print.
 window.addEventListener('listsaved', () => badge());

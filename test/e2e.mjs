@@ -680,6 +680,67 @@ assert.equal(await fresh.page.locator('.banner').count(), 0, 'and the example is
 await fresh.page.click('.tabs a[data-tab="pack"]');
 assert.equal(await fresh.page.inputValue('#num'), '2', 'their own list starts at 1, so the next is 2');
 
+// ---------- Two tabs on one phone ----------
+// The installed app and a tab a scanned label opened share one list: whatever one saves, the other keeps.
+step('two tabs');
+const tabs = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true });
+const tab = async name => {
+  const p = await tabs.newPage();
+  p.on('pageerror', e => problems.push(`${name}: ${e.message}`));
+  p.on('console', m => { if (m.type() === 'error') problems.push(`${name}: ${m.text()}`); });
+  await p.addInitScript(() => { window.print = () => setTimeout(() => window.dispatchEvent(new Event('afterprint')), 0); });
+  return p;
+};
+const stored = p => p.evaluate(() => JSON.parse(localStorage.getItem('this-side-up.v1')).boxes.filter(b => !b.gone));
+const appTab = await tab('app tab');
+await appTab.goto(base);
+await appTab.click('[data-act="start"]');
+await packBox(appTab, { from: 'Kitchen', things: ['Kettle', 'Mugs'] });
+await packBox(appTab, { from: 'Kitchen', things: ['Plates', 'Bowls'] });
+// Box 3 is being typed in one tab while the other marks the labels printed: Box 3 is saved, and so is the printing.
+const labelTab = await tab('label tab');
+await labelTab.goto(base + '#/print');
+await labelTab.locator('[data-act="print"]').waitFor();
+await appTab.fill('#things', 'Cookbooks\nCast iron pan');
+await labelTab.click('[data-act="print"]');
+await labelTab.click('.sheet #sheetGo');
+await toastSays(labelTab, /2 labels marked as printed/);
+await appTab.click('#save');
+await savedSays(appTab, /Box 3 saved/);
+assert.deepEqual((await stored(appTab)).map(b => [b.n, !!b.printed]), [[1, true], [2, true], [3, false]], 'Box 3 is kept, and boxes 1 and 2 stay printed');
+// A box changed in one tab while the other ticks it onto the truck: the change and the tick are both kept.
+const kettle = (await stored(appTab)).find(b => b.n === 1).uid;
+await appTab.goto(base + `#/box/${kettle}/edit`);
+await appTab.fill('#things', 'Kettle\nMugs\nTea');
+await labelTab.goto(base + '#/truck/load');
+await labelTab.click('[data-key="1"]');
+await labelTab.click('[data-key="tick"]');
+await appTab.click('#save');
+await appTab.waitForURL(new RegExp(`#/box/${kettle}$`));
+const kettleNow = (await stored(appTab)).find(b => b.uid === kettle);
+assert.deepEqual(kettleNow.items, ['Kettle', 'Mugs', 'Tea'], 'the change is kept');
+assert.ok(kettleNow.loaded, 'and so is the tick');
+// Each tab packs its own box. Both start on Box 4; when one saves it, the other moves on to 5 and keeps what's typed.
+await appTab.goto(base + '#/new');
+await appTab.fill('#things', 'Towels');
+await labelTab.goto(base + '#/new');
+await labelTab.locator('#packForm').waitFor();
+assert.equal(await labelTab.inputValue('#things'), '', 'the other tab’s half-packed box stays in that tab');
+assert.equal(await labelTab.inputValue('#num'), '4');
+await labelTab.fill('#things', 'Lamps');
+await labelTab.click('#save');
+await savedSays(labelTab, /Box 4 saved/);
+await appTab.locator('#numTitle:text-is("5")').waitFor({ timeout: 5000 });
+assert.equal(await appTab.inputValue('#things'), 'Towels');
+// A tab that closes with a box half packed: the next tab to pack picks it up.
+await appTab.waitForFunction(() => /Towels/.test(localStorage.getItem('this-side-up.draft') || ''));
+await appTab.close();
+const nextTab = await tab('next tab');
+await nextTab.goto(base + '#/new');
+await nextTab.locator('.draft-note').waitFor();
+assert.equal(await nextTab.inputValue('#things'), 'Towels', 'a box left in a closed tab isn’t lost');
+await tabs.close();
+
 // ---------- Every project's checks ----------
 step('offline');
 for (const where of ['#/', '#/truck', '#/print', '#/more']) {

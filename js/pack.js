@@ -35,7 +35,8 @@ function placeLabel() {
 if (wide) wide.onchange = placeLabel;
 
 // editUid: change that box. number: a new box with this number (a sticker read before its box was packed).
-export function pack(editUid, number) {
+// fresh: a new box with nothing in it, whatever was left in a draft.
+export async function pack(editUid, number, { fresh = false } = {}) {
   if (!store.list) startList();
   const list = store.list;
   const editing = editUid ? M.byUid(list, editUid) : null;
@@ -43,10 +44,14 @@ export function pack(editUid, number) {
   const p = store.prefs;
   const justSaved = editing ? null : lastSaved;
   lastSaved = null;
+  // A draft from before comes back as it was left: this tab's own, or a box left half packed in a tab that's
+  // closed now. (A box another open tab is packing stays there.)
+  const address = location.hash;
+  const kept = editing ? drafts.get(editing.uid) : fresh ? null : drafts.get(null) || (drafts.left() ? await drafts.claim() : null);
+  if (location.hash !== address) return; // gone somewhere else meanwhile
   const here = id => (M.room(list, id) && !M.room(list, id).gone ? id : '');
   const blank = M.newBox(list, { from: here(p.lastFrom), to: here(p.lastTo) });
-  // A copy to change; the list only changes on Save. A draft from before comes back as it was left.
-  const kept = drafts.get(editing ? editing.uid : null);
+  // A copy to change; the list only changes on Save.
   let box, restored = false;
   let autoNum = !editing; // the next number, until one is typed
   if (editing) {
@@ -202,11 +207,31 @@ export function pack(editUid, number) {
     note.className = 'num-note';
   }
 
+  // The number on the title, the field and the Save button.
+  function showNumber() {
+    const v = box.n ? String(box.n) : '';
+    const field = $('#num');
+    if (field && field.value !== v) field.value = v;
+    $('#numTitle').textContent = v || '?';
+    const sn = $('#saveNum'); if (sn) sn.textContent = v || '?';
+  }
+
+  // Another tab packed a box with this number meanwhile: the next free one, if the number wasn't typed by hand.
+  const taken = () => M.findNumber(list, box.n).some(b => b.uid !== box.uid);
+  function stillFree() {
+    if (!taken()) return true;
+    if (!editing && autoNum) { box.n = M.nextNumber(list); showNumber(); checkNumber(); preview(); return true; }
+    checkNumber();
+    return false;
+  }
+
   function save() {
     readForm();
-    if ($('#save').disabled) return;
+    if ($('#save').disabled || !stillFree()) return;
     const now = Date.now();
-    if (editing) Object.assign(editing, box);
+    // Only what the form changes goes in: the box may have been ticked onto the truck or had its label printed in
+    // another tab while it was open here.
+    if (editing) Object.assign(editing, formOf(box));
     M.putBox(list, editing || box, now);
     store.prefs.lastFrom = box.from;
     store.prefs.lastTo = box.to;
@@ -218,10 +243,19 @@ export function pack(editUid, number) {
     if (editing) { toast(`${name} saved`); go(`/box/${box.uid}`); return; }
     // The next box is ready, with a note by its number (not over the Save button) and a way to open this one.
     lastSaved = { uid: box.uid, name };
-    if (location.hash === '#/new') { pack(); window.scrollTo(0, 0); } else go('/new', true);
+    if (location.hash === '#/new') pack().then(() => window.scrollTo(0, 0)); else go('/new', true);
   }
 
   on({
+    // Another tab changed the list: the number may be taken now, and rooms may have new names or colours. What's
+    // typed here stays as it is.
+    refresh() {
+      stillFree();
+      checkNumber();
+      preview();
+      const so = $('.pack .screen-head .hint');
+      if (so) so.textContent = `${plural(M.live(list).length, 'box', 'boxes')} so far`;
+    },
     submit(e) { e.preventDefault(); save(); },
     input(e) {
       if (e.target.id === 'num') {
@@ -229,8 +263,7 @@ export function pack(editUid, number) {
         if (v !== e.target.value) e.target.value = v;
         box.n = v ? Number(v) : 0;
         autoNum = false;
-        $('#numTitle').textContent = v || '?';
-        const sn = $('#saveNum'); if (sn) sn.textContent = v || '?';
+        showNumber();
         checkNumber();
       }
       readForm();
@@ -293,15 +326,13 @@ export function pack(editUid, number) {
       if (t.dataset.act === 'fresh') {
         clearTimeout(timer); // or the box being thrown away is kept again a moment later
         drafts.set(editing ? editing.uid : null, null);
-        pack(editUid);
+        pack(editUid, null, { fresh: true });
         return;
       }
       if (t.dataset.act === 'nextfree') {
         box.n = M.nextNumber(list);
         autoNum = !editing;
-        $('#num').value = box.n;
-        $('#numTitle').textContent = box.n;
-        const sn = $('#saveNum'); if (sn) sn.textContent = box.n;
+        showNumber();
         checkNumber();
         preview();
         return;

@@ -29,15 +29,7 @@ export function startList() {
 export function home() {
   const list = store.list;
   if (!list) return welcome();
-  const t = M.tally(list);
-  const toPrint = M.live(list).filter(b => needsLabel(b, list)).length;
-  // How many sheets they'd take, starting where the last sheet was left.
-  const labelSheet = sheetOf(store.prefs.sheet);
-  const per = perSheet(labelSheet);
-  const sheets = pages(labelSheet, toPrint, store.prefs.start?.[labelSheet.id] || 0).length;
   const clashes = M.clashes(list);
-  const showPacked = t.arrived > 0;
-  if (!showPacked && filter === 'packed') filter = 'all';
 
   app.innerHTML = `
     ${list.example ? `<div class="banner"><p><b>This is an example move.</b> Look around, tick things, print a label. When you’re ready, start your own list.</p><button class="btn small primary" data-act="own">Start my own list</button></div>` : ''}
@@ -52,6 +44,8 @@ export function home() {
   draw();
 
   on({
+    // Another tab changed the list: the counts and the list catch up, and a search being typed stays as it is.
+    refresh() { if (document.activeElement?.id === 'q') draw(); else home(); },
     input(e) {
       if (e.target.id !== 'q') return;
       query = e.target.value;
@@ -76,7 +70,15 @@ export function home() {
     const out = $('#results');
     const q = query.trim();
     if (q) { out.innerHTML = results(list, q); return; }
+    const t = M.tally(list);
     const all = M.live(list);
+    const toPrint = all.filter(b => needsLabel(b, list)).length;
+    // How many sheets they'd take, starting where the last sheet was left.
+    const labelSheet = sheetOf(store.prefs.sheet);
+    const per = perSheet(labelSheet);
+    const sheets = pages(labelSheet, toPrint, store.prefs.start?.[labelSheet.id] || 0).length;
+    const showPacked = t.arrived > 0;
+    if (!showPacked && filter === 'packed') filter = 'all';
     const shown = all.filter(b => {
       switch (filter) {
         case 'first': case 'fragile': case 'heavy': case 'car': return b[filter];

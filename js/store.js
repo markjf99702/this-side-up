@@ -7,10 +7,12 @@ const PREFS = 'this-side-up.prefs';
 const DRAFT = 'this-side-up.draft';
 const DB = 'this-side-up';
 
+// What's saved, as it's saved (what this tab last read or wrote, so it can tell when another tab has saved).
+const readRaw = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
+let lastRaw = readRaw();
+
 // A saved list that can't be read is put aside (this-side-up.v1.unreadable) rather than written over.
-function readList() {
-  let raw = null;
-  try { raw = localStorage.getItem(KEY); } catch { return null; }
+function readList(raw = readRaw()) {
   if (!raw) return null;
   let list = null;
   try { list = cleanList(JSON.parse(raw)); } catch { list = null; }
@@ -18,6 +20,27 @@ function readList() {
     try { localStorage.setItem(KEY + '.unreadable', raw); } catch { /* nowhere to put it */ }
   }
   return list;
+}
+
+// Makes `into` hold what `from` holds, keeping the same object for each box and room that's in both (and the same
+// arrays), so a screen that's holding a box, a room or the list still has the live one after another tab saves.
+export function adopt(into, from) {
+  const same = (old, fresh, key) => {
+    const had = new Map(old.map(x => [x[key], x]));
+    const now = fresh.map(x => {
+      const o = had.get(x[key]);
+      if (!o) return x;
+      for (const k of Object.keys(o)) if (!(k in x)) delete o[k];
+      return Object.assign(o, x);
+    });
+    old.splice(0, old.length, ...now);
+    return old;
+  };
+  const boxes = same(into.boxes, from.boxes, 'uid');
+  const rooms = same(into.rooms, from.rooms, 'id');
+  for (const k of Object.keys(into)) if (!(k in from)) delete into[k];
+  Object.assign(into, from, { boxes, rooms });
+  return into;
 }
 
 const DEFAULT_PREFS = {
@@ -38,64 +61,130 @@ function readPrefs() {
   return { ...DEFAULT_PREFS };
 }
 
-let saving = false;
-
 export const store = {
   key: KEY,
-  list: readList(),
+  list: readList(lastRaw),
   prefs: readPrefs(),
 
   save() {
-    saving = true;
+    const raw = store.list ? JSON.stringify(store.list) : null;
     try {
-      if (store.list) localStorage.setItem(KEY, JSON.stringify(store.list)); else localStorage.removeItem(KEY);
+      if (raw) localStorage.setItem(KEY, raw); else localStorage.removeItem(KEY);
+      lastRaw = raw;
     } catch { /* full or blocked: it still works for this visit */ }
-    saving = false;
     // Anything that shows a count of the list (the red number on Print) brings itself up to date.
     globalThis.dispatchEvent?.(new Event('listsaved'));
   },
   savePrefs() {
     try { localStorage.setItem(PREFS, JSON.stringify(store.prefs)); } catch { /* not saved, still works */ }
   },
-  // Another tab saved: pick up its copy.
-  reload() { if (!saving) store.list = readList(); },
+  // Another tab saved (the installed app and a tab a label opened share one list), or this one was asleep while it
+  // did: take what's saved now. The same list comes into the objects this tab already has, so whatever a screen
+  // does next goes into the live list. Says 'same' (nothing new), 'changed' or 'replaced' (another list, or none).
+  sync() {
+    const raw = readRaw();
+    if (raw === lastRaw) return 'same';
+    lastRaw = raw;
+    const fresh = readList(raw);
+    if (store.list && fresh && fresh.id === store.list.id) { adopt(store.list, fresh); return 'changed'; }
+    store.list = fresh;
+    return 'replaced';
+  },
 };
 
 // ---------- Drafts ----------
 // The box being packed, and boxes being changed, kept as they're typed: a reload, a tap on another tab or a phone
-// that locks mid-box doesn't lose them. { new: { box, autoTo, autoNum }, edits: { uid: { box, autoTo } } }.
-// Saving the box clears its draft.
+// that locks mid-box doesn't lose them. Saving the box clears its draft.
+//   { tabs: { tab: { box, autoTo, autoNum, at } }, edits: { uid: { box, autoTo, at } } }
+// Each tab packs its own new box, so two tabs (the installed app and a tab a label opened) don't share one. A tab
+// keeps its id through a reload, and holds a lock named after it while it's open: a box left in a tab that's gone
+// (closed, or the phone shut the app) is picked up by the next tab that packs, rather than lost.
+const TAB_KEY = 'this-side-up.tab';
+const LOCK = 'this-side-up.tab.';
+const tab = (() => {
+  let id = '';
+  try { id = sessionStorage.getItem(TAB_KEY) || ''; } catch { /* no session storage: an id for this page */ }
+  if (!id) {
+    id = Math.random().toString(36).slice(2, 10);
+    try { sessionStorage.setItem(TAB_KEY, id); } catch { /* it lasts as long as the page, then */ }
+  }
+  return id;
+})();
+// Held until the tab closes. On a reload the page before may still hold it for a moment: this waits its turn.
+function holdTab() {
+  try {
+    navigator.locks?.request(LOCK + tab, () => new Promise(() => {})).catch(() => { /* no locks: drafts are shared, as before */ });
+  } catch { /* no locks here */ }
+}
+
+// The tabs open now, by id, or null where the browser can't say.
+async function openTabs() {
+  try {
+    const { held = [] } = await navigator.locks.query();
+    return new Set(held.map(l => l.name).filter(n => n.startsWith(LOCK)).map(n => n.slice(LOCK.length)));
+  } catch { return null; }
+}
+
 function readDrafts() {
   try {
     const d = JSON.parse(localStorage.getItem(DRAFT));
-    if (d && typeof d === 'object') return { new: d.new || null, edits: d.edits && typeof d.edits === 'object' ? d.edits : {} };
+    if (d && typeof d === 'object') {
+      const tabs = d.tabs && typeof d.tabs === 'object' ? d.tabs : {};
+      if (d.new?.box) tabs.before = d.new; // kept before tabs had their own
+      return { tabs, edits: d.edits && typeof d.edits === 'object' ? d.edits : {} };
+    }
   } catch { /* nothing kept */ }
-  return { new: null, edits: {} };
+  return { tabs: {}, edits: {} };
 }
 
+function writeDrafts(d) {
+  try {
+    if (Object.keys(d.tabs).length || Object.keys(d.edits).length) localStorage.setItem(DRAFT, JSON.stringify({ tabs: d.tabs, edits: d.edits }));
+    else localStorage.removeItem(DRAFT);
+  } catch { /* full or blocked: it still works for this visit */ }
+}
+
+// A few at most: the oldest goes first.
+const newest = (o, n) => Object.fromEntries(Object.entries(o).sort((a, b) => (b[1]?.at || 0) - (a[1]?.at || 0)).slice(0, n));
+
 export const drafts = {
-  get: uid => { const d = readDrafts(); return (uid ? d.edits[uid] : d.new) || null; },
+  // A box being changed (uid), or the new box this tab is packing (no uid).
+  get: uid => { const d = readDrafts(); return (uid ? d.edits[uid] : d.tabs[tab]) || null; },
+  // Are there new boxes being packed in other tabs (open or not)?
+  left: () => Object.keys(readDrafts().tabs).some(id => id !== tab),
+  // The new box this tab is packing; if it has none, the newest one left by a tab that isn't open any more.
+  async claim() {
+    const d = readDrafts();
+    if (d.tabs[tab]) return d.tabs[tab];
+    const open = await openTabs();
+    const left = Object.entries(d.tabs).filter(([id]) => id !== tab && !open?.has(id)).sort((a, b) => (b[1]?.at || 0) - (a[1]?.at || 0))[0];
+    if (!left) return null;
+    const now = readDrafts();
+    if (!now.tabs[left[0]]) return null;
+    now.tabs[tab] = now.tabs[left[0]];
+    delete now.tabs[left[0]];
+    writeDrafts(now);
+    return now.tabs[tab];
+  },
   set(uid, value) {
     const d = readDrafts();
     if (uid) {
       if (value) d.edits[uid] = { ...value, at: Date.now() }; else delete d.edits[uid];
-      // A few boxes' changes at most: the oldest goes first.
-      const keep = Object.entries(d.edits).sort((a, b) => (b[1].at || 0) - (a[1].at || 0)).slice(0, 6);
-      d.edits = Object.fromEntries(keep);
+      d.edits = newest(d.edits, 6);
     } else {
-      d.new = value ? { ...value, at: Date.now() } : null;
+      if (value) d.tabs[tab] = { ...value, at: Date.now() }; else delete d.tabs[tab];
+      d.tabs = newest(d.tabs, 6);
     }
-    try {
-      if (d.new || Object.keys(d.edits).length) localStorage.setItem(DRAFT, JSON.stringify(d)); else localStorage.removeItem(DRAFT);
-    } catch { /* full or blocked: it still works for this visit */ }
+    writeDrafts(d);
   },
   clear() { try { localStorage.removeItem(DRAFT); } catch { /* nothing to clear */ } },
   // Photos taken for a box that isn't saved yet.
   photos() {
     const d = readDrafts();
-    return [d.new, ...Object.values(d.edits)].flatMap(x => (Array.isArray(x?.box?.photos) ? x.box.photos : []));
+    return [...Object.values(d.tabs), ...Object.values(d.edits)].flatMap(x => (Array.isArray(x?.box?.photos) ? x.box.photos : []));
   },
 };
+if (typeof window !== 'undefined') holdTab();
 
 // ---------- Photos ----------
 

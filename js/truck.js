@@ -190,6 +190,12 @@ export function truck(stage) {
   }
 
   on({
+    // Another tab changed the list: the counts catch up, and a number half keyed in stays.
+    refresh() {
+      drawTruck(false);
+      if (typed) readout();
+      showLast();
+    },
     click(e) {
       const t = e.target.closest('button');
       if (!t) return;

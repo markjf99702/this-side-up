@@ -67,11 +67,13 @@ function offer(incoming, from) {
   on({
     click(e) {
       if (!e.target.closest('[data-act="merge"]')) return;
-      store.list = list;
+      // Merged into the list as it is now (another tab may have changed it since this was drawn).
+      const now = store.list ? M.merge(store.list, incoming) : { list, summary };
+      store.list = now.list;
       store.save();
       badge();
       go('/', true);
-      toast(mergedLine(summary));
+      toast(mergedLine(now.summary));
     },
   });
 }

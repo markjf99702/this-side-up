@@ -16,11 +16,17 @@ export function go(path, replace = false) {
   if (replace) location.replace(hash); else location.hash = hash;
 }
 
-// One set of listeners on the page; each screen says what they do.
+// One set of listeners on the page; each screen says what they do. A screen can also say how it brings itself up to
+// date when another tab changes the list (refresh), without losing what's being typed; otherwise it's drawn again.
 let handlers = {};
 export function on(h) { handlers = h; }
 for (const type of ['click', 'input', 'change', 'keydown', 'submit', 'focusout', 'pointerdown']) {
   app?.addEventListener(type, e => handlers[type]?.(e));
+}
+export function refreshScreen() {
+  if (!handlers.refresh) return false;
+  handlers.refresh();
+  return true;
 }
 
 let toastTimer;
