@@ -18,6 +18,8 @@ const defaultPaper = () => (/^(en-us|en-ca|es-mx|en-ph|fil)/i.test(navigator.lan
 const paper = () => store.prefs.paper || defaultPaper();
 const nudgeFor = s => ({ x: 0, y: 0, ...(store.prefs.nudge?.[s.id] || {}) });
 const startFor = s => Math.min(store.prefs.start?.[s.id] || 0, perSheet(s) - 1);
+// The one-file copy shown inside another page can't open the print dialog: say how to print instead.
+const noPrintHere = () => (framed() ? '<p class="hint">This copy can’t print. Send the list as a link from More, open it, and print from there.</p>' : '');
 
 function chosen(list) {
   const all = M.live(list);
@@ -98,7 +100,7 @@ function labels() {
       ${boxes.length
         ? `<button class="btn primary wide" data-act="print"${framed() ? ' disabled' : ''}>${icon('print')} Print ${plural(boxes.length, 'label')}<small>${plural(pageCount, 'sheet')}</small></button>`
         : `<p class="hint">${which === 'new' && !only ? 'Every label is printed and up to date.' : 'Pick the boxes to print.'}</p>`}
-      ${framed() ? '<p class="hint">Open it on junkdrawer.works to print.</p>' : ''}
+      ${noPrintHere()}
       ${howToPrint()}
       ${nudger(s, nudge)}
     </section>`;
@@ -242,6 +244,7 @@ function signs() {
     </section>
     <section class="card print-go">
       ${chosenRooms.length ? `<button class="btn primary wide" data-act="print"${framed() ? ' disabled' : ''}>${icon('print')} Print ${plural(chosenRooms.length, 'sign')}</button>` : '<p class="hint">Tick the rooms to print signs for.</p>'}
+      ${noPrintHere()}
       <p class="hint">Sideways, one to a page. Turn background graphics on.</p>
     </section>`;
   $('#preview').innerHTML = chosenRooms.map(r => signPage(r, counts.get(r.id), { paper: paper() })).join('');
@@ -279,6 +282,7 @@ function test() {
     </section>
     <section class="card print-go">
       <button class="btn primary wide" data-act="print"${framed() ? ' disabled' : ''}>${icon('print')} Print the test sheet</button>
+      ${noPrintHere()}
       ${nudger(s, nudge)}
     </section>`;
   $('#preview').innerHTML = testPage(s, { nudge });
