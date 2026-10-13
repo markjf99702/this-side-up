@@ -2,7 +2,7 @@
 import { store } from './store.js';
 import { app, esc, on, go, toast, icon, flagIcon, plural, $, sheet } from './ui.js';
 import * as M from './model.js';
-import { boxRow, tile, needsLabel, dot } from './common.js';
+import { boxRow, tile, needsLabel, dot, marked } from './common.js';
 import { example } from './example.js';
 import { sheet as sheetOf, perSheet } from './sheets.js';
 
@@ -144,6 +144,7 @@ function results(list, q) {
         <span>
           <span class="answer-q">“${esc(q)}” is in</span>
           <span class="answer-a">${top.box.kind === 'piece' ? esc(top.box.items[0] || 'Furniture') + ' · ' : ''}${top.box.kind === 'piece' ? 'No.' : 'Box'} ${top.box.n}${r ? `, ${esc(r.name)}` : ''}${top.box.first ? ', open first' : ''}</span>
+          <span class="answer-things">${(top.box.kind === 'piece' ? top.box.items.slice(1) : top.box.items).map(t => marked(t, q)).join(' · ')}</span>
           ${top.box.unpacked ? '<span class="status off">Unpacked</span>' : top.box.arrived ? '<span class="status on">Arrived</span>' : top.box.loaded ? '<span class="status on">On the truck</span>' : ''}
         </span>
       </a>` : `<p class="list-head"><span>${plural(found.length, 'box', 'boxes')} with “${esc(q)}”</span></p>`}

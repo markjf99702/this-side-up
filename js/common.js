@@ -53,22 +53,26 @@ export function stageNote(box) {
 
 export function boxRow(box, list, { hit = null, query = '' } = {}) {
   const to = M.room(list, box.to), from = M.room(list, box.from);
-  const lines = box.kind === 'piece' ? box.items.slice(1) : box.items;
-  let things;
-  if (hit && hit.lines.length) {
-    things = hit.lines.map(i => marked(box.items[i], query)).join(' · ');
-  } else {
-    things = lines.map(esc).join(' · ') || '<span class="hint">Nothing listed yet</span>';
-  }
-  const headline = box.kind === 'piece' ? `<b class="piece-name">${esc(box.items[0] || 'Furniture')}</b>` : '';
+  const piece = box.kind === 'piece';
+  const lines = piece ? box.items.slice(1) : box.items;
+  const shownHits = hit ? hit.lines.filter(i => !piece || i > 0) : [];
+  const things = shownHits.length
+    ? shownHits.map(i => marked(box.items[i], query)).join(' · ')
+    : lines.map(esc).join(' · ') || `<span class="hint">${piece ? 'Furniture' : 'Nothing listed yet'}</span>`;
+  const fromNote = from && (!to || M.norm(from.name) !== M.norm(to.name)) ? `<small>from ${esc(from.name)}</small>` : '';
+  const where = piece
+    ? `${hit && hit.lines.includes(0) ? marked(box.items[0] || 'Furniture', query) : esc(box.items[0] || 'Furniture')}<span class="to">${to ? `→ ${esc(to.name)}` : ''}</span>`
+    : `${to ? esc(to.name) : '<span class="hint">No room yet</span>'}${fromNote}`;
   return `
     <li><a class="boxrow${box.unpacked ? ' done' : ''}" href="#/box/${box.uid}" data-uid="${box.uid}">
       ${tile(box, list)}
       <span class="what">
-        <span class="where">${headline}${to ? esc(to.name) : '<span class="hint">No room yet</span>'}${from && (!to || M.norm(from.name) !== M.norm(to.name)) ? `<small>from ${esc(from.name)}</small>` : ''}</span>
+        <span class="where">${where}</span>
         <span class="things">${things}</span>
         ${stageNote(box)}
       </span>
       <span class="flags">${flagList(box).map(f => flagIcon(f)).join('')}</span>
     </a></li>`;
 }
+
+export { marked };
