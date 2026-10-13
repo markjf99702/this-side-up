@@ -382,12 +382,19 @@ textarea.input { resize: vertical; line-height: 1.5; }
 .save-bar { margin-top: 12px; display: grid; gap: 6px; }
 .save-bar .btn { min-height: 56px; font-size: 1.08rem; }
 .save-bar .hint { color: var(--kraft-ink); font-size: .86rem; }
+/* Saved a moment ago (beside the next box's number, so nothing sits on the Save button), and a draft brought back. */
+.saved-note { display: grid; justify-items: end; gap: 3px; margin: 0; color: var(--kraft-ink); font-weight: 700; font-size: .92rem; line-height: 1.25; text-align: right; }
+.saved-note .icon { vertical-align: -2px; color: var(--go); stroke-width: 3; }
+.saved-note a { font-weight: 800; text-underline-offset: 3px; }
+.draft-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin: 0; padding: 9px 12px; border-radius: 10px; background: var(--paper-2); border: 1.5px dashed var(--line-2); color: var(--ink-2); font-size: .92rem; }
 /* On a phone the Save button waits just above the tabs, wherever you are in the form. */
 @media (max-width: 899px) {
   .pack { padding-bottom: 76px; }
   .save-bar { position: fixed; left: 16px; right: 16px; bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom) + 10px); z-index: 15; margin: 0; }
   .save-bar .btn { box-shadow: 0 12px 26px -8px rgba(30, 20, 10, .7); }
   .save-bar .hint { display: none; }
+  /* Any message clears the Save button. */
+  body:has(.save-bar) .toast { bottom: calc(var(--tabs-h) + env(safe-area-inset-bottom) + 84px); }
 }
 
 /* Photos */

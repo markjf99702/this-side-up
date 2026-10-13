@@ -1,5 +1,5 @@
 // Everything else: the move's name, the rooms, the list on another phone, NFC stickers, and starting over.
-import { store } from './store.js';
+import { store, drafts } from './store.js';
 import { app, esc, on, go, toast, icon, sheet, plural, copy, framed } from './ui.js';
 import * as M from './model.js';
 import { numberPrefix, base } from './payload.js';
@@ -78,6 +78,7 @@ export function more() {
             close();
             const { photos } = await import('./store.js');
             for (const id of await photos.keys()) await photos.remove(id);
+            drafts.clear();
             store.list = null;
             store.save();
             badge();

@@ -1,6 +1,7 @@
 // Packing a box (or the sofa): its number, the room it's leaving and the room it's going to, what's in it a
-// line at a time, and the four flags. The label draws itself underneath as you type.
-import { store, photos } from './store.js';
+// line at a time, and the four flags. The label draws itself as you type, and what's typed is kept as a draft
+// until it's saved, so a reload or a look at another box doesn't lose it.
+import { store, photos, drafts } from './store.js';
 import { app, esc, on, go, toast, icon, flagIcon, $, $$, plural } from './ui.js';
 import * as M from './model.js';
 import { dot } from './common.js';
@@ -16,24 +17,51 @@ const FLAG_INFO = {
   car: ['Goes in the car', 'Not on the truck'],
 };
 
-export function pack(editUid) {
+// What the form changes; everything else about a box (its ticks, when its label was printed) stays as it is.
+const FORM = ['n', 'kind', 'from', 'to', 'items', 'photos', ...M.FLAGS];
+const formOf = b => Object.fromEntries(FORM.map(k => [k, Array.isArray(b[k]) ? [...b[k]] : b[k]]));
+const sameForm = (a, b) => FORM.every(k => JSON.stringify(a[k]) === JSON.stringify(b[k]));
+
+let lastSaved = null; // the box saved a moment ago, for the note beside the next one's number
+
+// editUid: change that box. number: a new box with this number (a sticker read before its box was packed).
+export function pack(editUid, number) {
   if (!store.list) startList();
   const list = store.list;
   const editing = editUid ? M.byUid(list, editUid) : null;
   if (editUid && !editing) return go('/', true);
   const p = store.prefs;
-  // A copy to change; nothing is saved until Save.
-  const box = editing ? JSON.parse(JSON.stringify(editing)) : M.newBox(list, {
-    from: M.room(list, p.lastFrom) && !M.room(list, p.lastFrom).gone ? p.lastFrom : '',
-    to: M.room(list, p.lastTo) && !M.room(list, p.lastTo).gone ? p.lastTo : '',
-  });
+  const justSaved = editing ? null : lastSaved;
+  lastSaved = null;
+  const here = id => (M.room(list, id) && !M.room(list, id).gone ? id : '');
+  const blank = M.newBox(list, { from: here(p.lastFrom), to: here(p.lastTo) });
+  // A copy to change; the list only changes on Save. A draft from before comes back as it was left.
+  const kept = drafts.get(editing ? editing.uid : null);
+  let box, restored = false;
+  let autoNum = !editing; // the next number, until one is typed
+  if (editing) {
+    box = JSON.parse(JSON.stringify(editing));
+    if (kept?.box) { Object.assign(box, formOf(M.cleanBox({ ...kept.box, uid: editing.uid }))); restored = !sameForm(box, editing); }
+  } else if (kept?.box && !M.byUid(list, kept.box.uid)) {
+    box = M.cleanBox(kept.box);
+    box.from = here(box.from);
+    box.to = here(box.to);
+    autoNum = kept.autoNum !== false;
+    // Its number went to another box meanwhile (another tab, another phone): it takes the next one.
+    if (autoNum && (!box.n || M.findNumber(list, box.n).length)) box.n = M.nextNumber(list);
+    restored = true;
+  } else {
+    box = JSON.parse(JSON.stringify(blank));
+  }
+  if (number && !editing) { box.n = number; autoNum = false; }
   // "Going to" follows "Leaving" (Kitchen to Kitchen) until it's picked by hand: for a new box, and for a box
   // whose two rooms already share a name.
   const sameNames = () => box.from && box.to && M.norm(M.room(list, box.from)?.name) === M.norm(M.room(list, box.to)?.name);
-  let autoTo = !editing || !box.to || sameNames();
+  let autoTo = restored && typeof kept.autoTo === 'boolean' ? kept.autoTo : !editing || !box.to || sameNames();
   let timer;
 
   draw();
+  if (justSaved) $('#things')?.focus({ preventScroll: true });
 
   function draw() {
     const fromRooms = M.rooms(list, 'from'), toRooms = M.rooms(list, 'to');
@@ -45,10 +73,13 @@ export function pack(editUid) {
             <p class="kicker kraft">${editing ? 'Change' : 'Pack'}</p>
             <h1>${piece ? 'No.' : 'Box'} <span id="numTitle">${box.n}</span></h1>
           </div>
-          ${editing ? `<a class="btn small" href="#/box/${box.uid}">${icon('back')} Back</a>` : `<span class="hint kraft">${plural(M.live(list).length, 'box', 'boxes')} so far</span>`}
+          ${editing ? `<a class="btn small" href="#/box/${box.uid}">${icon('back')} Back</a>`
+            : justSaved ? `<p class="saved-note" role="status"><span>${icon('check', 'icon xs')} ${esc(justSaved.name)} saved</span><a href="#/box/${justSaved.uid}">Open it</a></p>`
+            : `<span class="hint kraft">${plural(M.live(list).length, 'box', 'boxes')} so far</span>`}
         </div>
         <form class="pack-grid" id="packForm" novalidate>
           <div class="card pack-form">
+            ${restored ? `<p class="draft-note">${editing ? 'Your changes from before, not saved yet.' : 'Picked up where you left off.'} <button type="button" class="linkish" data-act="fresh">${editing ? 'Throw them away' : 'Start this box again'}</button></p>` : ''}
             <div class="pack-top">
               <label class="field num-field"><span>Number</span>
                 <input class="input num" id="num" type="text" inputmode="numeric" pattern="[0-9]*" value="${box.n}" maxlength="4" autocomplete="off" aria-describedby="numNote">
@@ -105,7 +136,7 @@ export function pack(editUid) {
             <div class="boxside" id="preview"></div>
             <p class="hint kraft under">A phone that reads the code sees the room, the flags and the first things on the list.</p>
             <div class="save-bar">
-              <button type="submit" class="btn primary wide" id="save">${icon('check')} ${editing ? 'Save changes' : `Save ${piece ? 'No.' : 'Box'} <span id="saveNum">${box.n}</span>`}</button>
+              <button type="submit" class="btn primary wide" id="save">${icon('check')}<span>${editing ? 'Save changes' : `Save ${piece ? 'No.' : 'Box'} <span id="saveNum">${box.n}</span>`}</span></button>
               ${editing ? '' : `<p class="hint center">Then the next box is ready, in the same rooms.</p>`}
             </div>
           </div>
@@ -129,7 +160,14 @@ export function pack(editUid) {
     timer = setTimeout(() => {
       const el = $('#preview');
       if (el) el.innerHTML = onScreen(fromBox(box, list));
+      keep();
     }, 60);
+  }
+
+  // The draft: kept while it's different from where it started, dropped when it's back to that (or saved).
+  function keep() {
+    if (editing) drafts.set(editing.uid, sameForm(box, editing) ? null : { box: formOf(box), autoTo });
+    else drafts.set(null, sameForm({ ...box, n: autoNum ? blank.n : box.n }, blank) ? null : { box, autoTo, autoNum });
   }
 
   // The number has to be free (unless it's this box's own).
@@ -159,13 +197,13 @@ export function pack(editUid) {
     store.prefs.lastTo = box.to;
     store.savePrefs();
     store.save();
+    clearTimeout(timer);
+    drafts.set(editing ? editing.uid : null, null);
     const name = box.kind === 'piece' ? (box.items[0] || `No. ${box.n}`) : `Box ${box.n}`;
     if (editing) { toast(`${name} saved`); go(`/box/${box.uid}`); return; }
-    const saved = box.uid;
-    toast(`${name} saved`, { label: 'Open it', run: () => go(`/box/${saved}`) });
-    pack();
-    window.scrollTo(0, 0);
-    $('#things')?.focus({ preventScroll: true });
+    // The next box is ready, with a note by its number (not over the Save button) and a way to open this one.
+    lastSaved = { uid: box.uid, name };
+    if (location.hash === '#/new') { pack(); window.scrollTo(0, 0); } else go('/new', true);
   }
 
   on({
@@ -175,6 +213,7 @@ export function pack(editUid) {
         const v = e.target.value.replace(/\D/g, '').slice(0, 4);
         if (v !== e.target.value) e.target.value = v;
         box.n = v ? Number(v) : 0;
+        autoNum = false;
         $('#numTitle').textContent = v || '?';
         const sn = $('#saveNum'); if (sn) sn.textContent = v || '?';
         checkNumber();
@@ -189,6 +228,7 @@ export function pack(editUid) {
       readForm();
       await addPhoto(box, file);
       $('#photoStrip').innerHTML = photoStrip(box, true);
+      keep();
     },
     click(e) {
       const t = e.target.closest('button, a');
@@ -234,8 +274,14 @@ export function pack(editUid) {
         preview();
         return;
       }
+      if (t.dataset.act === 'fresh') {
+        drafts.set(editing ? editing.uid : null, null);
+        pack(editUid);
+        return;
+      }
       if (t.dataset.act === 'nextfree') {
         box.n = M.nextNumber(list);
+        autoNum = !editing;
         $('#num').value = box.n;
         $('#numTitle').textContent = box.n;
         const sn = $('#saveNum'); if (sn) sn.textContent = box.n;
@@ -249,6 +295,7 @@ export function pack(editUid) {
         box.photos = box.photos.filter(x => x !== id);
         if (!editing || !editing.photos.includes(id)) photos.remove(id);
         $('#photoStrip').innerHTML = photoStrip(box, true);
+        keep();
       }
     },
   });

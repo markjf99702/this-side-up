@@ -51,6 +51,8 @@ const fits = async (page, where) => assert.equal(await page.evaluate(() => docum
 const text = page => page.locator('main').innerText();
 // Waits for the toast to say this (an earlier one may still be showing).
 const toastSays = (page, re) => page.locator('#toast:not([hidden])', { hasText: re }).waitFor({ timeout: 8000 });
+// A box just packed says so beside the next one's number.
+const savedSays = (page, re) => page.locator('.saved-note', { hasText: re }).waitFor({ timeout: 8000 });
 const hash = page => page.evaluate(() => location.hash);
 
 async function packBox(page, { from, to, things, flags = [], piece = false, name }) {
@@ -67,7 +69,7 @@ async function packBox(page, { from, to, things, flags = [], piece = false, name
   for (const f of flags) await page.click(`[data-flag="${f}"]`);
   const n = Number(await page.inputValue('#num'));
   await page.click('#save');
-  await toastSays(page, new RegExp(`${piece ? name : `Box ${n}`} saved`));
+  await savedSays(page, new RegExp(`${piece ? name : `Box ${n}`} saved`));
   return n;
 }
 
@@ -101,10 +103,36 @@ await page.locator('#preview .lab-fragile').waitFor({ timeout: 3000 }); // the l
 assert.equal(await page.locator('#preview .lab-num').innerText(), '1');
 await fits(page, 'the packing form');
 await page.click('#save');
-await toastSays(page, /Box 1 saved/);
+await savedSays(page, /Box 1 saved/);
 assert.equal(await page.inputValue('#num'), '2', 'the next box is ready');
 assert.equal(await page.getAttribute('[data-side="from"] .chip:text-is("Kitchen")', 'aria-pressed'), 'true', 'in the same rooms');
 assert.equal(await page.inputValue('#things'), '', 'with nothing in it yet');
+assert.match(await page.getAttribute('.saved-note a', 'href'), /^#\/box\//, 'and a way to open the one just saved');
+// Nothing sits on the Save button after saving: the next box can be saved straight away.
+assert.equal(await page.evaluate(() => {
+  const r = document.querySelector('#save').getBoundingClientRect();
+  return [0.15, 0.5, 0.85].every(f => document.elementFromPoint(r.left + r.width * f, r.top + r.height / 2)?.closest('#save'));
+}), true, 'the Save button is clear');
+
+// A half-packed box survives a reload and a look at the other tabs, until it's saved or started again.
+await page.fill('#things', 'Cookbooks\nCast iron pan\nDutch oven');
+await page.click('[data-flag="heavy"]');
+await page.waitForFunction(() => /Dutch oven/.test(localStorage.getItem('this-side-up.draft') || ''));
+await page.reload();
+await page.locator('#packForm').waitFor();
+assert.equal(await page.inputValue('#things'), 'Cookbooks\nCast iron pan\nDutch oven', 'a reload keeps the half-packed box');
+assert.equal(await page.getAttribute('[data-flag="heavy"]', 'aria-pressed'), 'true', 'flags and all');
+assert.equal(await page.inputValue('#num'), '2');
+assert.match(await page.locator('.draft-note').innerText(), /Picked up where you left off/);
+await page.click('.tabs a[data-tab="boxes"]');
+await page.locator('#q').waitFor();
+await page.goBack();
+await page.locator('#packForm').waitFor();
+assert.equal(await page.inputValue('#things'), 'Cookbooks\nCast iron pan\nDutch oven', 'and going back to it');
+await page.click('[data-act="fresh"]');
+assert.equal(await page.inputValue('#things'), '', 'Start this box again clears it');
+assert.equal(await page.getAttribute('[data-flag="heavy"]', 'aria-pressed'), 'false');
+assert.equal(await page.evaluate(() => localStorage.getItem('this-side-up.draft')), null, 'and its draft');
 
 await packBox(page, { from: 'Bedroom', things: ['Sheets', 'Pillows', 'Bath towels'], flags: ['first'] });
 await packBox(page, { from: 'Living room', things: ['Books: A to M', 'Board games'], flags: ['heavy'] });
@@ -217,6 +245,18 @@ await page.goto(base + `#/box/${box1}/edit`);
 await page.fill('#things', 'Kettle\nMugs\nCoffee\nFrench press');
 await page.click('#save');
 await page.waitForURL(new RegExp(`#/box/${box1}$`));
+
+// Changes to a box survive leaving it unsaved, say so when they come back, and can be thrown away.
+await page.goto(base + `#/box/${box1}/edit`);
+await page.fill('#things', 'Kettle\nMugs\nCoffee\nFrench press\nBiscuits');
+await page.waitForFunction(() => /Biscuits/.test(localStorage.getItem('this-side-up.draft') || ''));
+await page.click('.tabs a[data-tab="truck"]');
+await page.goto(base + `#/box/${box1}/edit`);
+assert.match(await page.inputValue('#things'), /Biscuits/, 'the unsaved change is back');
+assert.match(await page.locator('.draft-note').innerText(), /not saved yet/);
+await page.click('[data-act="fresh"]');
+assert.equal(await page.inputValue('#things'), 'Kettle\nMugs\nCoffee\nFrench press', 'Throw them away goes back to what was saved');
+assert.equal(await page.locator('.draft-note').count(), 0);
 
 // Mark's phone opens the same link as the box in his list; so does a sticker.
 await page.goto(labelLink);

@@ -4,6 +4,7 @@ import { cleanList } from './model.js';
 
 const KEY = 'this-side-up.v1';
 const PREFS = 'this-side-up.prefs';
+const DRAFT = 'this-side-up.draft';
 const DB = 'this-side-up';
 
 // A saved list that can't be read is put aside (this-side-up.v1.unreadable) rather than written over.
@@ -58,6 +59,42 @@ export const store = {
   reload() { if (!saving) store.list = readList(); },
 };
 
+// ---------- Drafts ----------
+// The box being packed, and boxes being changed, kept as they're typed: a reload, a tap on another tab or a phone
+// that locks mid-box doesn't lose them. { new: { box, autoTo, autoNum }, edits: { uid: { box, autoTo } } }.
+// Saving the box clears its draft.
+function readDrafts() {
+  try {
+    const d = JSON.parse(localStorage.getItem(DRAFT));
+    if (d && typeof d === 'object') return { new: d.new || null, edits: d.edits && typeof d.edits === 'object' ? d.edits : {} };
+  } catch { /* nothing kept */ }
+  return { new: null, edits: {} };
+}
+
+export const drafts = {
+  get: uid => { const d = readDrafts(); return (uid ? d.edits[uid] : d.new) || null; },
+  set(uid, value) {
+    const d = readDrafts();
+    if (uid) {
+      if (value) d.edits[uid] = { ...value, at: Date.now() }; else delete d.edits[uid];
+      // A few boxes' changes at most: the oldest goes first.
+      const keep = Object.entries(d.edits).sort((a, b) => (b[1].at || 0) - (a[1].at || 0)).slice(0, 6);
+      d.edits = Object.fromEntries(keep);
+    } else {
+      d.new = value ? { ...value, at: Date.now() } : null;
+    }
+    try {
+      if (d.new || Object.keys(d.edits).length) localStorage.setItem(DRAFT, JSON.stringify(d)); else localStorage.removeItem(DRAFT);
+    } catch { /* full or blocked: it still works for this visit */ }
+  },
+  clear() { try { localStorage.removeItem(DRAFT); } catch { /* nothing to clear */ } },
+  // Photos taken for a box that isn't saved yet.
+  photos() {
+    const d = readDrafts();
+    return [d.new, ...Object.values(d.edits)].flatMap(x => (Array.isArray(x?.box?.photos) ? x.box.photos : []));
+  },
+};
+
 // ---------- Photos ----------
 
 let dbp = null;
@@ -98,10 +135,11 @@ export const photos = {
   get: id => tx('readonly', s => s.get(id)).then(b => (b instanceof Blob ? b : null)).catch(() => null),
   remove: id => tx('readwrite', s => { s.delete(id); }).catch(() => {}),
   keys: () => tx('readonly', s => s.getAllKeys()).catch(() => []),
-  // Photos no box mentions any more (taken for a box that was never saved), a day or more old.
+  // Photos no box mentions any more (taken for a box that was never saved), a day or more old. A box still being
+  // packed keeps its photos, however long it's been.
   async sweep(list) {
     if (!list) return 0;
-    const used = new Set(list.boxes.flatMap(b => b.photos));
+    const used = new Set([...list.boxes.flatMap(b => b.photos), ...drafts.photos()]);
     let n = 0;
     for (const id of await photos.keys()) {
       const at = takenAt(id);
