@@ -4,7 +4,7 @@ import { store } from './store.js';
 import { app, esc, on, go, toast, icon, flagIcon, plural, $, sheet, buzz } from './ui.js';
 import * as M from './model.js';
 import { styleOf, shapeSVG } from './rooms.js';
-import { dot, tile } from './common.js';
+import { dot, tile, boxesAndPieces } from './common.js';
 
 let typed = '';
 let last = null; // { uid, stage, before: [value, at] } for Undo
@@ -290,8 +290,9 @@ function finishedLine(list, stage, all) {
     return `<b>Everything’s loaded.</b><small>${plural(all.length - car, 'thing')} on the truck${car ? `, ${car} in the car` : ''}. Close the doors.</small>`;
   }
   if (stage === 'unpack') return `<b>Everything’s unpacked.</b><small>Welcome home.</small>`;
+  if (all.length === 1) return `<b>${esc(name(all[0]))} made it.</b>`;
   return pieces
-    ? `<b>All ${all.length} made it.</b><small>${plural(boxes, 'box', 'boxes')} and ${plural(pieces, 'piece')} of furniture.</small>`
+    ? `<b>All ${all.length} made it.</b><small>${boxesAndPieces(all)}.</small>`
     : `<b>All ${boxes} boxes made it.</b>`;
 }
 
@@ -342,7 +343,7 @@ function resetSheet(list, stage, after) {
   if (!n) { toast('Nothing’s ticked yet.'); return; }
   sheet(`
     <h2>Start the count again?</h2>
-    <p>This unticks all ${n} ${stage === 'load' ? 'loaded' : stage === 'unload' ? 'unloaded' : 'unpacked'} boxes, for a fresh count. The boxes and everything else stay as they are.</p>
+    <p>This unticks ${n === 1 ? 'the one' : `all ${n}`} ${stage === 'load' ? 'loaded' : stage === 'unload' ? 'unloaded' : 'unpacked'} ${n === 1 ? 'box' : 'boxes'}, for a fresh count. The boxes and everything else stay as they are.</p>
     <div class="row"><button class="btn" data-close>Keep the count</button><button class="btn primary" id="sheetGo">Untick ${n}</button></div>`, (body, close) => {
     body.querySelector('#sheetGo').onclick = () => {
       const now = Date.now();
