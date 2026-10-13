@@ -33,10 +33,11 @@ It's a static site: plain HTML, CSS and JavaScript modules, with no build step.
 
 ```sh
 npx serve .                   # or any static file server, then open the printed address
-npm install                   # only for the tests: zxing-wasm (reads QR codes) and upng-js (reads PNGs)
+npm install                   # only for the tests and tools below: zxing-wasm (reads QR codes), upng-js (PNGs) and esbuild
 npm test                      # the list, links, label sheets and QR codes (Node 20+), then the app in Chromium (needs Playwright)
 node tools/screenshots.mjs    # redraws docs/*.png and og.png from the example move
 node tools/make-icons.mjs     # redraws the PNG icons from icon.svg
+npm run build                 # dist/this-side-up.html, the whole app in one file
 ```
 
 The Chromium test also prints labels to PDF and reads every QR code back from where the Avery template says its label is, and prints a crowded move (two to four flags, a room it's leaving, long lists) on every sheet type and reads every code on every page. It uses `pdftoppm` and `pdfinfo` (poppler) for that part when they're installed, and skips it when they aren't.
@@ -54,4 +55,5 @@ To put it online with GitHub Pages: **Settings → Pages → Build and deploymen
 - `fonts/`: Big Shoulders Stencil Display and Archivo (SIL Open Font License) and Permanent Marker (Apache License 2.0), served from here so nothing loads from elsewhere.
 - `sw.js`: keeps a copy for using offline.
 - `og.png`: the link preview, and `docs/`: the screenshots above, both made by `tools/screenshots.mjs`. `tools/make-icons.mjs` makes the icons from `icon.svg` and `tools/icon-full-bleed.svg`.
+- `scripts/build.mjs`: bundles the app, fonts and all, into `dist/this-side-up.html`, and writes `dist/artifact.html`, the same page without its `<html>`, `<head>` and `<body>`, for a playable copy shown inside another page. Shown that way it hides or turns off the buttons that save a file, print or open the share sheet (a page in a frame can't), and its links and label codes point at junkdrawer.works/this-side-up. `dist/` isn't kept in the repo.
 - `test/unit.test.mjs` checks the list, search, merging, links and label sheets. `test/qr.test.mjs` draws every label's code the way a phone camera sees a 1½ inch code from about 25 cm (soft, noisy, turned) and reads it back with zxing-cpp. `test/e2e.mjs` packs a move, reads a label from the screen and from the printed PDF, counts the truck both ways (and checks no key moves between boxes on a 390 × 664 screen), moves the list between three phones, and uses two tabs on one phone at once.

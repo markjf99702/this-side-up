@@ -118,6 +118,7 @@ render();
 // Tidy away photos from boxes that were never saved, once things have settled.
 setTimeout(() => photos.sweep(store.list).catch(() => {}), 4000);
 
-if ('serviceWorker' in navigator && location.protocol !== 'file:' && !document.documentElement.dataset.single) {
+// The one-file copy (data-single, from scripts/build.mjs) has no sw.js beside it to register.
+if ('serviceWorker' in navigator && location.protocol !== 'file:' && !('single' in document.documentElement.dataset)) {
   navigator.serviceWorker.register('sw.js').catch(() => { /* fine: it just won't work offline */ });
 }
