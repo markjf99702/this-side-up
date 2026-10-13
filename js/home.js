@@ -6,6 +6,7 @@ import { boxRow, tile, needsLabel, dot, marked } from './common.js';
 import { example } from './example.js';
 import { sampleLabel } from './labels.js';
 import { sheet as sheetOf, perSheet, pages } from './sheets.js';
+import { DEFAULT_FROM, DEFAULT_TO } from './rooms.js';
 
 let filter = 'all';
 let query = '';
@@ -25,6 +26,11 @@ export function startList() {
   store.list = M.newList();
   store.save();
 }
+
+// A list nobody has put anything in yet (opening Print or More first starts one): no boxes, no name, the rooms as
+// they came. The example can still take its place, since nothing would be lost.
+const untouched = list => !list.boxes.length && !list.name && list.rooms.length === DEFAULT_FROM.length + DEFAULT_TO.length
+  && list.rooms.every(r => !r.gone && r.edited <= list.made);
 
 export function home() {
   const list = store.list;
@@ -63,6 +69,7 @@ export function home() {
       if (g) { store.prefs.group = g; store.savePrefs(); draw(); return; }
       if (act === 'clear') { query = ''; const q = $('#q'); q.value = ''; q.focus(); app.querySelector('.clear').hidden = true; draw(); }
       if (act === 'own') ownList();
+      if (act === 'example' && untouched(list)) { store.list = example(); store.save(); go('/'); }
     },
   });
 
@@ -118,7 +125,10 @@ export function home() {
       ` : `
         <div class="empty-note">
           <p><b>No boxes yet.</b> Pack the first one: its number is 1.</p>
-          <a class="btn primary" href="#/new">${icon('pack')} Pack a box</a>
+          <div class="row">
+            <a class="btn primary" href="#/new">${icon('pack')} Pack a box</a>
+            ${untouched(list) ? '<button class="btn" data-act="example">Look around an example move</button>' : ''}
+          </div>
         </div>`}
     `;
   }

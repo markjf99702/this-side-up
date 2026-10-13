@@ -766,6 +766,15 @@ assert.match(await fresh.page.locator('.boxrow').innerText(), /My real kettle/);
 assert.equal(await fresh.page.locator('.banner').count(), 0, 'and the example is gone');
 await fresh.page.click('.tabs a[data-tab="pack"]');
 assert.equal(await fresh.page.inputValue('#num'), '2', 'their own list starts at 1, so the next is 2');
+// Opening More before anything else starts an empty list: until something's put in it, the example is still there.
+const curious = await device('curious');
+await curious.page.goto(base + '#/more');
+await curious.page.locator('.more').waitFor();
+await curious.page.click('.tabs a[data-tab="boxes"]');
+await curious.page.click('.empty-note [data-act="example"]');
+await curious.page.locator('.banner').waitFor();
+assert.ok(await curious.page.locator('.boxrow').count() > 20, 'the example, from an empty list nobody had used');
+await curious.ctx.close();
 
 // ---------- Two tabs on one phone ----------
 // The installed app and a tab a scanned label opened share one list: whatever one saves, the other keeps.
