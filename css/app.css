@@ -459,6 +459,7 @@ h1.scan-num { font-size: 3.4rem; margin: 6px 0 12px; }
 .tagline { margin: 16px 12px 0; text-align: center; color: var(--kraft-ink); font-size: .9rem; line-height: 1.5; }
 .tagline .up { width: 15px; height: 15px; vertical-align: -2px; margin-right: 3px; }
 .tagline a { font-weight: 700; white-space: nowrap; }
+.tagline.small { margin-top: 8px; font-size: .82rem; opacity: .85; }
 body.bare .tabs { display: none; }
 body.bare { padding-bottom: 0; }
 

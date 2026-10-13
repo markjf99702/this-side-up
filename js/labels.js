@@ -208,7 +208,7 @@ export function signPage(r, count, { paper = 'letter' } = {}) {
     <section class="page sign" style="--pw:${pw};--ph:${ph};--rc:${st.hex};--ri:${st.ink};--fs:${fs.toFixed(2)}">
       <div class="sign-colour"><span class="sign-disc">${shapeSVG(st.shape, { cls: 'sign-shape' })}</span></div>
       <div class="sign-words">
-        <p class="sign-kicker">${upMark('sign-up')} Boxes with this colour go in here</p>
+        <p class="sign-kicker">${upMark('sign-up')} Boxes marked like this go in here</p>
         <h2 class="sign-name">${esc(r.name)}</h2>
         <p class="sign-count">${count ? `${count} ${count === 1 ? 'box' : 'boxes'}` : ''}</p>
       </div>

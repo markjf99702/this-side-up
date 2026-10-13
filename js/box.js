@@ -268,6 +268,7 @@ export function labelView(p, link, mine = [], n = null) {
         </div>
       </section>
       ${tagline()}
+      ${list ? '' : `<p class="tagline small">Your own box? Open This Side Up on the phone that has your list (from its home screen, if that’s where you keep it) and search for ${d.n}.</p>`}
     </div>`;
   on({
     click(e) {
