@@ -740,7 +740,8 @@ body.bare { padding-bottom: 0; }
 .essentials h2 { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .essentials h2 small { color: var(--muted); font-weight: 650; font-size: .9rem; }
 .essentials ul { list-style: none; margin: 4px 0 8px; padding: 0; }
-.essentials li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+/* The tick, what it is and where it's packed, and the cross; "Open it first" goes under the words, not beside them. */
+.essentials li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
 .essentials li:last-child { border-bottom: 0; }
 .ess-mark { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; border: 2px solid var(--line-2); flex: none; }
 .ess-mark .icon { width: 18px; height: 18px; stroke-width: 3; }
@@ -749,8 +750,8 @@ body.bare { padding-bottom: 0; }
 .ess-what { display: grid; flex: 1 1 auto; min-width: 0; }
 .ess-what small { color: var(--muted); font-size: .86rem; }
 .essentials li.maybe .ess-what small { color: var(--warn); }
-.essentials li .btn.small { flex: none; padding: 5px 10px; font-size: .82rem; min-height: 34px; }
-.essentials li .icon-btn { width: 32px; height: 32px; }
+.essentials li .btn.small { grid-column: 2; grid-row: 2; justify-self: start; margin-top: 6px; padding: 5px 10px; font-size: .82rem; min-height: 34px; }
+.essentials li .icon-btn { grid-column: 3; grid-row: 1; width: 32px; height: 32px; }
 .essentials li .icon-btn .icon { width: 16px; height: 16px; }
 
 /* ---------- More ---------- */
