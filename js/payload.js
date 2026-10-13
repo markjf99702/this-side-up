@@ -57,11 +57,22 @@ export function boxFragment(box, list, budget = QR_BYTES - SITE.length) {
   return out;
 }
 
-// A room's name, cut short enough that a name in another alphabet can't crowd out what's in the box.
+// A room's name, short enough that a name in another alphabet can't crowd out what's in the box. A name that's
+// too long is cut after a word, with "..." to say so (not "Kids' playroom & craft c").
 function encName(name) {
-  let chars = Array.from(plain(name)).slice(0, 24);
-  while (enc(chars.join('')).length > 36) chars = chars.slice(0, -1);
-  return enc(chars.join(''));
+  const full = Array.from(plain(name));
+  const fits = (chars, most) => chars.length <= most && enc(chars.join('')).length <= 36;
+  if (fits(full, 24)) return enc(full.join(''));
+  const cut = head => Array.from(head.replace(/[\s&+,;:/-]+$/, '') + '...');
+  for (let i = full.length - 1; i > 0; i--) {
+    if (full[i] !== ' ') continue;
+    const chars = cut(full.slice(0, i).join(''));
+    if (chars.length > 3 && fits(chars, 26)) return enc(chars.join(''));
+  }
+  // One long word (or a script that takes many characters to send): as much of it as fits.
+  let head = full.slice(0, 23);
+  while (head.length > 1 && !fits(cut(head.join('')), 26)) head = head.slice(0, -1);
+  return enc(cut(head.join('')).join(''));
 }
 
 export const boxLink = (box, list, at = base()) => at + '#' + boxFragment(box, list, QR_BYTES - at.length - 1);

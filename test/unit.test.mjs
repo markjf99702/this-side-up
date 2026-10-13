@@ -231,12 +231,18 @@ test('a label’s link stays small enough to scan at 1½ inches', () => {
   const one = readBoxFragment(boxLink(box, list, SITE).split('#')[1]);
   assert.match(one.items[0], /^A very long description.*\.\.\.$/);
   assert.ok(boxLink(box, list, SITE).length <= QR_BYTES);
+  // A long room name is cut after a word, and says so.
+  M.room(list, box.to).name = 'Kids’ playroom & craft corner';
+  box.items = ['Crayons'];
+  assert.equal(readBoxFragment(boxLink(box, list, SITE).split('#')[1]).to, "Kids' playroom & craft...");
+  M.room(list, box.to).name = 'Kitchen';
   // Rooms in another alphabet don't crowd the things out.
   M.room(list, box.to).name = 'Кухня и столовая и кладовая';
   box.items = ['Kettle', 'Mugs'];
   const ru = boxLink(box, list, SITE);
   assert.ok(ru.length <= QR_BYTES);
   assert.deepEqual(readBoxFragment(ru.split('#')[1]).items, ['Kettle', 'Mugs']);
+  assert.equal(readBoxFragment(ru.split('#')[1]).to, 'Кухня...', 'cut after a word there too');
 });
 
 test('Tag Along number links', () => {

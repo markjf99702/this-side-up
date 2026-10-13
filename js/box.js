@@ -264,7 +264,9 @@ export function labelView(p, link, mine = [], n = null) {
             <ul class="things-list">${things.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
             ${d.more ? `<p class="hint">and ${plural(d.more, 'more thing')} that didn’t fit on the label’s code</p>` : ''}` : `<p class="hint">The label doesn’t list anything in it.</p>`}
           ${d.from && (!st || d.from.toLowerCase() !== st.name.toLowerCase()) ? `<p class="scan-from"><small>Leaving</small> ${esc(d.from)}</p>` : ''}
-          ${st ? `<p class="scan-match">${shapeSVG(st.shape, { cls: 'shape xs' })}<span>It goes through the door with the ${esc(st.name)} sign: ${esc(st.colourName.toLowerCase())}, with a ${shapeName(st.shape)}.</span></p>` : ''}
+          ${st ? `<p class="scan-match">${shapeSVG(st.shape, { cls: 'shape xs' })}<span>${/\.\.\.$/.test(st.name)
+            ? `It goes through the door whose sign is ${esc(st.colourName.toLowerCase())}, with a ${shapeName(st.shape)}.`
+            : `It goes through the door with the ${esc(st.name)} sign: ${esc(st.colourName.toLowerCase())}, with a ${shapeName(st.shape)}.`}</span></p>` : ''}
         </div>
       </section>
       ${tagline()}
