@@ -90,6 +90,8 @@ window.addEventListener('storage', e => {
   if (!typing) render();
 });
 window.addEventListener('beforeprint', preparePrint);
+// A room renamed, a box changed or a label marked printed changes what's left to print.
+window.addEventListener('listsaved', () => badge());
 
 render();
 // Tidy away photos from boxes that were never saved, once things have settled.

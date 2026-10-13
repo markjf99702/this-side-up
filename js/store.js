@@ -51,6 +51,8 @@ export const store = {
       if (store.list) localStorage.setItem(KEY, JSON.stringify(store.list)); else localStorage.removeItem(KEY);
     } catch { /* full or blocked: it still works for this visit */ }
     saving = false;
+    // Anything that shows a count of the list (the red number on Print) brings itself up to date.
+    globalThis.dispatchEvent?.(new Event('listsaved'));
   },
   savePrefs() {
     try { localStorage.setItem(PREFS, JSON.stringify(store.prefs)); } catch { /* not saved, still works */ }

@@ -618,6 +618,13 @@ await third.page.locator('.ph img').waitFor({ timeout: 8000 });
 // ---------- Rooms ----------
 step('rooms');
 await page.goto(base + '#/rooms');
+// Renaming a room puts its boxes' labels back on the list to print, and the red number says so straight away.
+const toPrintBefore = Number(await page.locator('#printBadge').textContent() || 0);
+const bedroom = page.locator('.room-list li', { has: page.locator('input[value="Bedroom"]') }).first();
+await bedroom.locator('.room-name').fill('Main bedroom');
+await bedroom.locator('.room-name').press('Tab');
+await toastSays(page, /Renamed/);
+assert.equal(Number(await page.locator('#printBadge').textContent()), toPrintBefore + 1, 'Box 2’s label needs printing again');
 const garage = page.locator('.room-list li', { has: page.locator('input[value="Garage"]') }).first();
 await garage.locator('.room-name').fill('Workshop');
 await garage.locator('.room-name').press('Tab');
