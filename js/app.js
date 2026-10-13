@@ -32,6 +32,7 @@ async function render() {
   // Label links keep their own escapes (a "/" or "~" inside a thing is escaped), so they're read as they are.
   const raw = location.hash.slice(1).trim();
   document.getElementById('sheet').close?.();
+  document.title = 'This Side Up';
   window.scrollTo(0, 0);
 
   // A label's QR code: on a phone with this move's list it opens the box there; anywhere else it shows the label.

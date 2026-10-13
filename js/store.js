@@ -6,8 +6,17 @@ const KEY = 'this-side-up.v1';
 const PREFS = 'this-side-up.prefs';
 const DB = 'this-side-up';
 
+// A saved list that can't be read is put aside (this-side-up.v1.unreadable) rather than written over.
 function readList() {
-  try { return cleanList(JSON.parse(localStorage.getItem(KEY))); } catch { return null; }
+  let raw = null;
+  try { raw = localStorage.getItem(KEY); } catch { return null; }
+  if (!raw) return null;
+  let list = null;
+  try { list = cleanList(JSON.parse(raw)); } catch { list = null; }
+  if (!list) {
+    try { localStorage.setItem(KEY + '.unreadable', raw); } catch { /* nowhere to put it */ }
+  }
+  return list;
 }
 
 const DEFAULT_PREFS = {
