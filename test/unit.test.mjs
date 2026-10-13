@@ -32,8 +32,28 @@ test('a new list has rooms at both ends, and numbers go up from 1', () => {
   const b = M.putBox(list, M.newBox(list, {}, T0), T0);
   assert.equal(b.n, 1);
   assert.equal(M.nextNumber(list), 2);
-  M.putBox(list, M.newBox(list, { n: 40 }, T0), T0);
-  assert.equal(M.nextNumber(list), 41, 'the next number follows the highest');
+});
+
+test('a number typed to match another box doesn’t make the run skip the ones below it', () => {
+  const list = M.newList(T0);
+  const add = n => M.putBox(list, M.newBox(list, n ? { n } : {}, T0), T0);
+  add(); add();
+  // Box 12 in Brickyard is Box 12 here: the run carries on at 3, then steps over 12.
+  add(12);
+  assert.equal(M.nextNumber(list), 3);
+  for (let i = 0; i < 9; i++) add();
+  assert.deepEqual(M.live(list).map(b => b.n), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  assert.equal(M.nextNumber(list), 13);
+  // A removed box's number isn't handed out again: its label may still be on a box.
+  const b13 = add();
+  M.removeBox(list, b13.uid);
+  assert.equal(M.nextNumber(list), 14);
+  // Brickyard's boxes first (12, 14, 31), then packing the rest from 1.
+  const by = M.newList(T0);
+  for (const n of [12, 14, 31]) M.putBox(by, M.newBox(by, { n }, T0), T0);
+  const run = [];
+  for (let i = 0; i < 14; i++) run.push(M.putBox(by, M.newBox(by, {}, T0), T0).n);
+  assert.deepEqual(run, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 16]);
 });
 
 test('rooms at the new place each get their own colour and shape for the first eight', () => {

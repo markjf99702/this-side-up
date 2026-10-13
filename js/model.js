@@ -113,9 +113,14 @@ const liveRoom = (list, rid) => { const r = room(list, rid); return r && !r.gone
 export const findNumber = (list, n) => live(list).filter(b => b.n === n);
 export const byUid = (list, u) => list.boxes.find(b => b.uid === u) || null;
 
+// The lowest number no box has had: a number typed to match one from somewhere else (Box 12 in Brickyard) doesn't
+// make the run jump past the ones below it, and a removed box's number isn't given out again (its label may still
+// be on a box somewhere).
 export function nextNumber(list) {
-  const nums = live(list).map(b => b.n);
-  return Math.min(MAX_NUMBER, (nums.length ? Math.max(...nums) : 0) + 1);
+  const used = new Set(list.boxes.map(b => b.n));
+  let n = 1;
+  while (used.has(n) && n < MAX_NUMBER) n++;
+  return n;
 }
 
 export const flagWords = { fragile: 'Fragile', heavy: 'Heavy', first: 'Open first', car: 'Goes in the car' };
