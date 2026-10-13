@@ -24,6 +24,16 @@ const sameForm = (a, b) => FORM.every(k => JSON.stringify(a[k]) === JSON.stringi
 
 let lastSaved = null; // the box saved a moment ago, for the note beside the next one's number
 
+// On a phone the label sits in the form, just above what's in the box, so it draws itself where you're typing;
+// on a wider screen it waits beside the form.
+const wide = typeof matchMedia === 'function' ? matchMedia('(min-width: 900px)') : null;
+function placeLabel() {
+  const block = document.getElementById('labelBlock');
+  const spot = wide?.matches ? document.querySelector('.pack-side') : document.getElementById('labelSlot');
+  if (block && spot && block.parentElement !== spot) spot.prepend(block);
+}
+if (wide) wide.onchange = placeLabel;
+
 // editUid: change that box. number: a new box with this number (a sticker read before its box was packed).
 export function pack(editUid, number) {
   if (!store.list) startList();
@@ -106,6 +116,7 @@ export function pack(editUid, number) {
                 <button type="button" class="chip add" data-add="to">${icon('plus', 'icon xs')} Room</button>
               </div>
             </fieldset>
+            <div class="label-slot" id="labelSlot"></div>
 
             ${piece ? `
               <label class="field"><span>What is it?</span>
@@ -133,9 +144,11 @@ export function pack(editUid, number) {
           </div>
 
           <div class="pack-side">
-            <p class="kicker kraft">The label</p>
-            <div class="boxside" id="preview"></div>
-            <p class="hint kraft under">A phone that reads the code sees the room, the flags and the first things on the list.</p>
+            <div class="label-block" id="labelBlock">
+              <p class="kicker kraft">The label</p>
+              <div class="boxside" id="preview"></div>
+              <p class="hint kraft under">A phone that reads the code sees the room, the flags and the first things on the list.</p>
+            </div>
             <div class="save-bar">
               <button type="submit" class="btn primary wide" id="save">${icon('check')}<span>${editing ? 'Save changes' : `Save ${piece ? 'No.' : 'Box'} <span id="saveNum">${box.n}</span>`}</span></button>
               ${editing ? '' : `<p class="hint center">Then the next box is ready, in the same rooms.</p>`}
@@ -143,6 +156,7 @@ export function pack(editUid, number) {
           </div>
         </form>
       </div>`;
+    placeLabel();
     preview();
     checkNumber();
   }
@@ -168,7 +182,7 @@ export function pack(editUid, number) {
   // The draft: kept while it's different from where it started, dropped when it's back to that (or saved).
   function keep() {
     if (editing) drafts.set(editing.uid, sameForm(box, editing) ? null : { box: formOf(box), autoTo });
-    else drafts.set(null, sameForm({ ...box, n: autoNum ? blank.n : box.n }, blank) ? null : { box, autoTo, autoNum });
+    else drafts.set(null, sameForm({ ...box, n: blank.n }, blank) ? null : { box, autoTo, autoNum });
   }
 
   // The number has to be free (unless it's this box's own).
