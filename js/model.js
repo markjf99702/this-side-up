@@ -267,6 +267,38 @@ export function search(list, query) {
   return results.sort((a, b) => b.score - a.score || a.box.n - b.box.n);
 }
 
+// ---------- The first night ----------
+
+// What people reach for on the first night: the words that find each one in a box, and the things that only look
+// like it (tea towels are for the kitchen, a coffee table is furniture, baking sheets aren't bedding).
+export const ESSENTIALS = [
+  ['bed', 'Sheets and pillows', ['sheet', 'pillow', 'pillowcase', 'duvet', 'bedding', 'blanket', 'quilt', 'comforter'], ['baking sheet', 'cookie sheet', 'sheet pan', 'dryer sheet', 'sheet music', 'bath sheet']],
+  ['towels', 'Towels', ['towel', 'bath sheet'], ['tea towel', 'paper towel', 'dish towel', 'kitchen towel']],
+  ['loo', 'Toilet paper', ['toilet paper', 'toilet roll', 'loo roll'], []],
+  ['chargers', 'Phone chargers', ['charger', 'charging cable', 'charging'], []],
+  ['coffee', 'Coffee or tea, and the kettle', ['coffee', 'tea', 'teabag', 'kettle', 'french press', 'aeropress', 'moka'], ['tea towel', 'tea light', 'coffee table']],
+  ['meds', 'Medicines', ['medicine', 'meds', 'pills', 'prescription', 'first aid'], []],
+  ['pets', 'The pets’ food and bowls', ['dog', 'cat food', 'cat bowl', 'pet', 'kibble', 'litter'], []],
+  ['wash', 'Soap and toothbrushes', ['soap', 'toothbrush', 'toothpaste', 'shampoo', 'body wash', 'shower gel'], ['dish soap', 'soap dish']],
+  ['tools', 'A screwdriver and a box cutter', ['screwdriver', 'box cutter', 'tool', 'toolbox', 'tool kit', 'hex key', 'allen key', 'drill', 'utility knife'], []],
+  ['eat', 'Plates, cups and a snack', ['plate', 'cup', 'mug', 'cutlery', 'snack'], ['measuring cup', 'license plate', 'licence plate']],
+  ['curtain', 'A shower curtain', ['shower curtain'], []],
+];
+
+// Whole words, or the same with an s or es on the end: "tea" finds "tea" and "teas", not "teaspoons".
+const wordRe = w => new RegExp(`(^|[^a-z0-9])${norm(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(e?s)?(?![a-z0-9])`, 'g');
+
+// The boxes with one of these words in what's in them, leaving out the things that only look like it.
+export function findThing(list, words, not = []) {
+  const yes = words.map(wordRe), no = not.map(wordRe);
+  const hit = text => {
+    let t = norm(text);
+    for (const re of no) t = t.replace(re, ' ');
+    return yes.some(re => { re.lastIndex = 0; return re.test(t); });
+  };
+  return live(list).filter(b => b.items.some(hit));
+}
+
 // ---------- Two phones, one list ----------
 
 const INFO = ['n', 'kind', 'from', 'to', 'items', 'photos', ...FLAGS, 'made', 'edited'];

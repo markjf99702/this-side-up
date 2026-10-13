@@ -129,6 +129,21 @@ test('search finds the kettle, plurals and numbers', () => {
   assert.deepEqual(M.search(list, '   '), []);
 });
 
+test('the first night finds the towels, not the tea towels', () => {
+  const list = M.newList(T0);
+  const add = (items, first = false) => M.putBox(list, M.newBox(list, { items, first }, T0), T0);
+  const kitchen = add(['Kettle', 'Tea towels', 'Baking sheets', 'Teaspoons', 'Dish soap', 'Measuring cups'], true);
+  add(['Coffee table books', 'Paper towels', 'Team jerseys', 'Tea lights']);
+  const bed = add(['Sheets', 'Pillowcases', 'Bath towels', 'Toothbrushes', 'Mugs']);
+  const found = k => { const [, , words, not] = M.ESSENTIALS.find(e => e[0] === k); return M.findThing(list, words, not).map(b => b.n); };
+  assert.deepEqual(found('towels'), [bed.n], 'tea towels and paper towels aren’t towels');
+  assert.deepEqual(found('bed'), [bed.n], 'baking sheets aren’t bedding');
+  assert.deepEqual(found('coffee'), [kitchen.n], 'the kettle counts; tea towels, tea lights, teaspoons and a coffee table don’t');
+  assert.deepEqual(found('wash'), [bed.n], 'toothbrushes count; dish soap doesn’t');
+  assert.deepEqual(found('eat'), [bed.n], 'mugs count; measuring cups don’t');
+  assert.deepEqual(found('loo'), []);
+});
+
 test('missing boxes are grouped by the room to look in', () => {
   const list = sample();
   const [b1, b2] = M.live(list);

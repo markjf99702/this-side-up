@@ -5,27 +5,6 @@ import { app, esc, on, go, toast, icon, flagIcon, plural } from './ui.js';
 import * as M from './model.js';
 import { dot, tile } from './common.js';
 
-// What people reach for on the first night, and the words that find each one in a box.
-export const ESSENTIALS = [
-  ['bed', 'Sheets and pillows', ['sheet', 'pillow', 'duvet', 'bedding', 'blanket', 'quilt', 'comforter']],
-  ['towels', 'Towels', ['towel']],
-  ['loo', 'Toilet paper', ['toilet paper', 'toilet roll', 'loo roll']],
-  ['chargers', 'Phone chargers', ['charger', 'charging']],
-  ['coffee', 'Coffee or tea, and the kettle', ['coffee', 'tea', 'kettle', 'french press', 'aeropress', 'moka']],
-  ['meds', 'Medicines', ['medicine', 'meds', 'pills', 'prescription', 'first aid']],
-  ['pets', 'The pets’ food and bowls', ['dog', 'cat food', 'cat bowl', 'pet', 'kibble', 'litter']],
-  ['wash', 'Soap and toothbrushes', ['soap', 'toothbrush', 'toothpaste', 'shampoo']],
-  ['tools', 'A screwdriver and a box cutter', ['screwdriver', 'box cutter', 'tools', 'hex key', 'allen key', 'drill']],
-  ['eat', 'Plates, cups and a snack', ['plate', 'cups', 'mug', 'cutlery', 'snack']],
-  ['curtain', 'A shower curtain', ['shower curtain']],
-];
-
-// Boxes with one of these words at the start of a word in what's in them.
-export function findThing(list, words) {
-  const res = words.map(w => new RegExp(`(^|[^a-z0-9])${M.norm(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
-  return M.live(list).filter(b => b.items.some(t => res.some(re => re.test(M.norm(t)))));
-}
-
 export function firstNight() {
   if (!store.list) return go('/', true);
   const list = store.list;
@@ -37,8 +16,8 @@ export function firstNight() {
     byRoom.get(key).push(b);
   }
   const hidden = new Set(store.prefs.hideFirst || []);
-  const checks = ESSENTIALS.filter(([k]) => !hidden.has(k)).map(([k, label, words]) => {
-    const found = findThing(list, words);
+  const checks = M.ESSENTIALS.filter(([k]) => !hidden.has(k)).map(([k, label, words, not]) => {
+    const found = M.findThing(list, words, not);
     const first = found.filter(b => b.first);
     return { k, label, found, first };
   });
@@ -63,7 +42,7 @@ export function firstNight() {
         <h2>Packed for the first night? <small>${ready} of ${checks.length}</small></h2>
         <ul>${checks.map(c => `
           <li class="${c.first.length ? 'yes' : c.found.length ? 'maybe' : 'no'}">
-            <span class="ess-mark">${c.first.length ? icon('check') : ''}</span>
+            <span class="ess-mark" title="${c.first.length ? 'In a box to open first' : c.found.length ? 'Packed, but not to open first' : 'Not packed yet'}">${c.first.length ? icon('check') : c.found.length ? '!' : '–'}</span>
             <span class="ess-what"><b>${esc(c.label)}</b>
               <small>${c.first.length ? `In ${c.first.map(b => `<a href="#/box/${b.uid}">Box ${b.n}</a>`).join(', ')}`
                 : c.found.length ? `In ${c.found.slice(0, 3).map(b => `<a href="#/box/${b.uid}">Box ${b.n}</a>`).join(', ')}, which ${c.found.length === 1 ? 'isn’t' : 'aren’t'} marked Open first`
