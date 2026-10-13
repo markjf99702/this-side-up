@@ -12,6 +12,8 @@ export function qrMatrix(text) {
   return { n, version: (n - 17) / 4, dark: (r, c) => qr.isDark(r, c) };
 }
 
+const attr = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
 // One path, with each run of dark squares in a row drawn as one rectangle (smaller, and no hairline seams).
 export function qrSVG(text, { label = 'QR code', quiet = 4, cls = 'qr' } = {}) {
   const m = qrMatrix(text);
@@ -26,5 +28,5 @@ export function qrSVG(text, { label = 'QR code', quiet = 4, cls = 'qr' } = {}) {
     }
   }
   const size = m.n + quiet * 2;
-  return `<svg class="${cls}" viewBox="0 0 ${size} ${size}" role="img" aria-label="${label}" shape-rendering="crispEdges" data-version="${m.version}"><rect width="${size}" height="${size}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+  return `<svg class="${attr(cls)}" viewBox="0 0 ${size} ${size}" role="img" aria-label="${attr(label)}" shape-rendering="crispEdges" data-version="${m.version}"><rect width="${size}" height="${size}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
 }

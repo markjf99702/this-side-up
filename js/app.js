@@ -20,8 +20,9 @@ const routes = [
   [/^\/new$/, 'pack', () => pack()],
   [/^\/box\/([\w-]+)\/edit$/, 'boxes', u => pack(u)],
   [/^\/box\/([\w-]+)$/, 'boxes', u => boxScreen(u)],
-  [/^\/truck(?:\/(load|unload))?$/, 'truck', s => truck(s)],
+  [/^\/truck(?:\/(load|unload|unpack))?$/, 'truck', s => truck(s)],
   [/^\/print(?:\/(labels|signs|test))?$/, 'print', w => printScreen(w)],
+  [/^\/print\/box\/([\w-]+)$/, 'print', u => printScreen('labels', u)],
   [/^\/rooms$/, 'more', () => roomsScreen()],
   [/^\/first$/, 'boxes', () => firstNight()],
   [/^\/more$/, 'more', () => more()],
@@ -29,7 +30,8 @@ const routes = [
 
 let last = '';
 async function render() {
-  const raw = decodeURIComponent(location.hash.slice(1)).trim();
+  // Label links keep their own escapes (a "/" or "~" inside a thing is escaped), so they're read as they are.
+  const raw = location.hash.slice(1).trim();
   document.getElementById('sheet').close?.();
   window.scrollTo(0, 0);
 
@@ -51,7 +53,9 @@ async function render() {
   }
   if (raw.startsWith('l/')) { setTab(''); return listArrives(raw.slice(2)); }
 
-  const path = raw.startsWith('/') || raw === '' ? raw : '/' + raw;
+  let path = raw;
+  try { path = decodeURIComponent(raw); } catch { /* use it as it is */ }
+  if (!path.startsWith('/')) path = '/' + path;
   for (const [re, tab, show] of routes) {
     const m = path.match(re);
     if (!m) continue;
