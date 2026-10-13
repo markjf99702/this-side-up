@@ -115,10 +115,13 @@ export function pack(editUid) {
     checkNumber();
   }
 
+  // Furniture keeps its name first; without one it's just "Furniture", so a note never becomes its name.
   function readForm() {
     const things = $('#things')?.value.split('\n') || [];
-    box.items = box.kind === 'piece' ? M.cleanItems([$('#pieceName')?.value || '', ...things]) : M.cleanItems(things);
-    if (box.kind === 'piece' && !($('#pieceName')?.value || '').trim()) box.items = M.cleanItems(['', ...things]);
+    if (box.kind !== 'piece') { box.items = M.cleanItems(things); return; }
+    const name = M.cleanItems([$('#pieceName')?.value || ''])[0];
+    const notes = M.cleanItems(things);
+    box.items = name || notes.length ? [name || 'Furniture', ...notes].slice(0, M.MAX_ITEMS) : [];
   }
 
   function preview() {
@@ -191,10 +194,14 @@ export function pack(editUid) {
       const t = e.target.closest('button, a');
       if (!t) return;
       if (t.dataset.kind) {
-        readForm();
         if (t.dataset.kind === box.kind) return;
+        // A box's first line becomes the furniture's name, and back; an empty name stays empty.
+        const named = box.kind === 'piece' && ($('#pieceName')?.value || '').trim();
+        readForm();
+        if (box.kind === 'piece' && !named) box.items = box.items.slice(1);
         box.kind = t.dataset.kind;
         draw();
+        preview();
         return;
       }
       if (t.dataset.room) {
