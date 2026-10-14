@@ -15,7 +15,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json', '.json': 'application/json' };
 // The page opens at its real address, answered from this folder, so the labels' codes point where a phone can open
 // them (not at a local server), and come out the same every time.
-const base = 'https://junkdrawer.works/this-side-up/';
+const base = 'https://this-side-up.junkdrawer.works/';
 async function serve(ctx) {
   await ctx.route(base + '**', async route => {
     const path = decodeURIComponent(new URL(route.request().url()).pathname).slice(new URL(base).pathname.length) || 'index.html';
@@ -30,6 +30,8 @@ await mkdir(join(root, 'docs'), { recursive: true });
 async function open(viewport, deviceScaleFactor, { example = true } = {}) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor, hasTouch: true, isMobile: deviceScaleFactor > 1, serviceWorkers: 'block' });
   await serve(ctx);
+  // On a first visit to the real address carry.js would ask junkdrawer.works for saves; the example needs none.
+  await ctx.addInitScript(() => { try { localStorage.setItem('junkdrawer.carried', 'screenshots'); } catch { /* fine */ } });
   const page = await ctx.newPage();
   await page.addInitScript(seed => {
     let a = seed; // mulberry32

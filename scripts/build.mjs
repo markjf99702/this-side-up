@@ -42,11 +42,16 @@ if (/url\(\s*["']?(\.\.?\/|[\w-]+\/)/.test(css)) throw new Error('css/app.css: a
 
 const icon = await dataUri('icon.svg', 'image/svg+xml');
 let html = await read('index.html');
+// carry.js brings saves over from the old address at the real one; the one-file copy has no old address to ask.
+html = html.replace(/ *<script src="carry\.js"><\/script>\n/, '');
 html = swap(html, /\n *<link rel="manifest"[^>]*>/, '', 'index.html');
 html = html.replace(/\n *<link rel="(apple-touch-icon|preload)"[^>]*>/g, '');
 html = swap(html, '"icon.svg"', () => `"${icon}"`, 'index.html');
 html = swap(html, '<link rel="stylesheet" href="css/app.css">', () => `<style>\n${css}</style>`, 'index.html');
 html = swap(html, /\n *<script type="module" src="js\/app.js"><\/script>/, '', 'index.html');
+// No files sit beside the one-file copy: whatever the page still points at must be a link elsewhere, data: or a #.
+const stray = html.match(/\s(?:src|href)="(?![a-z][a-z\d+.-]*:|#)[^"]*"/i);
+if (stray) throw new Error(`index.html: ${stray[0].trim()}, a file the one-file copy can’t reach`);
 html = swap(html, '</body>', () => `<script>\n${js}</script>\n</body>`, 'index.html');
 
 const fragment = html

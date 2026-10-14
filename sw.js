@@ -2,9 +2,9 @@
 // The list lives in localStorage and the photos in IndexedDB, not here.
 // Network first, so a new version shows up as soon as you're online.
 
-const CACHE = 'this-side-up-v1'; // bump the number when the file list changes
+const CACHE = 'this-side-up-v2'; // bump the number when the file list changes
 const SHELL = [
-  './', 'index.html', 'icon.svg', 'manifest.webmanifest',
+  './', 'index.html', 'carry.js', 'icon.svg', 'manifest.webmanifest',
   'icon-180.png', 'icon-192.png', 'icon-512.png', 'icon-512-maskable.png',
   'css/app.css',
   'fonts/big-shoulders-stencil.woff2', 'fonts/archivo.woff2', 'fonts/permanent-marker.woff2',
@@ -18,7 +18,8 @@ self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
-// Only this app's own older copies go: the other tools at junkdrawer.works share this origin's caches.
+// Only this app's own older copies go. It used to share junkdrawer.works, and its caches, with the other tools there,
+// and it still clears nothing that isn't its own.
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
     .then(keys => Promise.all(keys.filter(k => k.startsWith('this-side-up-') && k !== CACHE).map(k => caches.delete(k))))

@@ -10,7 +10,7 @@
 // the flags and as much of what's inside as fits (roughly the first 120 characters).
 import { room, cleanList } from './model.js';
 
-export const SITE = 'https://junkdrawer.works/this-side-up/';
+export const SITE = 'https://this-side-up.junkdrawer.works/';
 export const QR_BYTES = 213; // the most a version 10 QR code holds at error correction level M
 
 // Where links should point: this page when it's the real site or a local copy, the real site otherwise

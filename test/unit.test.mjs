@@ -305,7 +305,8 @@ test('Tag Along number links', () => {
 
 test('links point at this page locally and at the real site from anywhere else', () => {
   assert.equal(base({ protocol: 'http:', hostname: 'localhost', origin: 'http://localhost:9520', pathname: '/' }), 'http://localhost:9520/');
-  assert.equal(base({ protocol: 'https:', hostname: 'junkdrawer.works', origin: 'https://junkdrawer.works', pathname: '/this-side-up/' }), SITE);
+  assert.equal(SITE, 'https://this-side-up.junkdrawer.works/');
+  assert.equal(base({ protocol: 'https:', hostname: 'this-side-up.junkdrawer.works', origin: 'https://this-side-up.junkdrawer.works', pathname: '/' }), SITE);
   assert.equal(base({ protocol: 'https:', hostname: 'claude.ai', origin: 'https://claude.ai', pathname: '/x' }), SITE);
   assert.equal(base({ protocol: 'file:', hostname: '', origin: 'null', pathname: '/x' }), SITE);
 });
@@ -426,7 +427,7 @@ test('the offline copy has every file the page uses, and nothing that isn’t th
     const p = dir ? `${dir}/${f}` : f;
     return (await stat(join(root, p))).isDirectory() ? walk(p) : [p];
   }))).flat();
-  const files = [...await walk('js'), ...await walk('css'), ...await walk('fonts')];
+  const files = ['carry.js', ...await walk('js'), ...await walk('css'), ...await walk('fonts')];
   for (const f of files) assert.ok(shell.includes(f), `sw.js should cache ${f}`);
   for (const f of shell.filter(f => f !== './')) await stat(join(root, f)); // throws if it's missing
 });
